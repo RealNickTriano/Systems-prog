@@ -2,3 +2,5 @@ can give file that is too big to write to memory
 can have word longer than wrap length
 	-> if this happens word is printed on new line(longer than wrap length) this is unavoidable
 use low level IO functions
+
+File I/O lectures started on 2/17
