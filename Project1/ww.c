@@ -44,7 +44,7 @@ int Wrap(unsigned width, int input_fd, int output_fd)
                 }
 
             }     
-              
+
         }
     return 0;
 	}
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    int error = Wrap(width, input_file, output_fd);           // Call wrap
+    int error = Wrap(width, input_fd, output_fd);           // Call wrap
 
     if(error > 0)
     {
