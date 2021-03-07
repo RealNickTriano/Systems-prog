@@ -4,3 +4,11 @@ can have word longer than wrap length
 use low level IO functions
 
 File I/O lectures started on 2/17
+
+List of issues:
+	- If statements detecting spacing are not working
+		-> isspace works on its own and I can do stuff based on if theres a space or not,
+			but when using && operator it seems to never work	
+			isspace can only say if its not a space?
+			ISSPACE RETURNS NONEZERO IF ITS A SPACE AND ZERO IF NOT THE LECTURE WAS A LIE.
+			

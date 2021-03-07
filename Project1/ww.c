@@ -4,58 +4,59 @@
 #include <unistd.h>
 #include "strbuf.h"
 #include <fcntl.h>
-#include <ctype.h>
+#include <ctype.h>  
 
-int Wrap(unsigned width, int input_fd, int output_fd)
+int CheckWord(int width, char* buf)
+{
+	char character, adjacent_character;
+	int end_of_word = 0;
+	char overflow_buf[64];
+	int width_left, word_len;
+    int word_start = 0;
+	int word_end = 0;
+    width_left = width;
+
+ for(int i = 0; i < 19; i++)
     {
-        int BUFSIZE = 256;
-        int bytes_read, i, width_left, word_len, word_end;
-        int word_start = 0;
-	    char character, adjacent_character;
-        char buf[BUFSIZE];
-        strbuf_t overflow_buf;
-        sb_init(&overflow_buf, BUFSIZE);
-        width_left = width;
+		character = buf[i];
+		adjacent_character = buf[i + 1];
 
-        while((bytes_read = read(input_fd, buf, BUFSIZE)) > 0)              
-        {    
-            for(i = 0; i < BUFSIZE; i++)
-            {
-                character = buf[i];
-                adjacent_character = buf[i + 1];
-
-                if ((isspace(character) == 1 && isspace(adjacent_character) != 1))         //Check if the current character is whitespace (1 means whitespace)             
-                {
-                    word_start = i;                         // This is where the word starts
-                }
-                else if((isspace(character)) != 1 && (isspace(adjacent_character)) != 1)
-                {
-                    word_end = i;                           //This is where the word ends
-                }
-                else
-                {
-                    //We are in the middle of a word
-                }
-                if(word_end <= width_left)
-                {
-                    word_len = word_end - word_start;               // Calculate word length
-                    //Print word
-                    write(output_fd, buf, word_len);                // Write to output the word
-                }
-
-            }     
-
-        }
-    return 0;
+		if (isspace(character) != 0 && isspace(adjacent_character) == 0)         //Check if the current character is whitespace (!= 0 means whitespace)             
+		{
+				
+		    word_start = i;                         // This is where the word starts
+		}
+		else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
+		{
+				
+		    word_end = i + 1;                           //This is where the word ends
+			end_of_word = 1;                            // Set this to true so we know when we found the end of a word
+		}
+		else
+		{
+		    //We are in the middle of a word
+		}
+		if(end_of_word == 1)										// Print a word everytime we reach the end of one
+		{															
+			word_len = (word_end - word_start);                             // Calculate the length of that word
+			write(0, &buf[word_start], sizeof(char) * (word_len));          // Write to stdout the whole word
+			end_of_word = 0;                                                // set this too false 
+		}
+				
 	}
-
-    
+    // We come out of this at the end of the buffer (i = 19)
+    /* Next steps, if we end in the middle of a word put the beginning of that word in another buffer
+        -> call read again to overwrite buffer
+        -> If new buffer starts with a space then we have the completed word in other buffer
+        -> else keep going untill we find the space (part of word is still stashed)
+        -> words can be too big for the buffer.*/
+}
 
 int main(int argc, char **argv)
 {
-    int input_fd, output_fd;
-    int width = *argv[1];
-    FILE* input_file;
+    int input_fd, output_fd, bytes_read, i;
+    int width = 20;
+    char buf[width];
     
     // Check args
     if(argc > 3 || argc == 0)                  // Make sure enough arguements are passed
@@ -71,22 +72,25 @@ int main(int argc, char **argv)
         output_fd = fileno(*argv[3]);           // If there is an output file given get the file descriptor ***FOR PART 2***
     }*/
     
-    input_fd = open(argv[2], O_RDONLY);         // Open input file in read only
-    input_file = fdopen(input_fd, O_RDONLY);    // make a FILE struct from input file discriptor
+    input_fd = open(argv[1], O_RDONLY);         // Open input file in read only
     if (input_fd == -1)                         // returns -1 if couldnt open file
     {
         return EXIT_FAILURE;
     }
 
-    int error = Wrap(width, input_fd, output_fd);           // Call wrap
+    bytes_read = read(input_fd, buf, 20); 
+    CheckWord(width,buf);									// Call CheckWord to find the words in the buffer (This is also writing currently)        
+         
+               
+		putchar('\n');
 
-    if(error > 0)
-    {
-        printf("Error: Exceeded page width");
+    if (bytes_read < 0) 
+	{
+		perror("Read error");
     }
 
-    // Close both files
-    close(input_fd);  
-    close(output_fd);                               
+    close(input_fd);						// close input file
+
+    return EXIT_SUCCESS;
 }
 
