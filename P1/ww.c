@@ -17,15 +17,14 @@ int overflow = 0;
 int overcount = 0;
 int overflow_buf[64];
 
-int wrap(int width, char *buf, int output_fd)
+int wrap(int width, char *buf, int output_fd, int width_left)
 {
         char character, adjacent_character;
         int found_end = 0;  //A boolean to check if we found the end of a word
         char extra_buf[64]; //An extra buffer to copy to global overflow buffer
-        int width_left, word_len;
+        int word_len;
         int word_start = 0; //The start position of a word
         int word_end = 0;   //The end position of a word
-        width_left = width;
 
         for (int i = 0; i < BUFSIZE; i++)
         {
@@ -39,7 +38,7 @@ int wrap(int width, char *buf, int output_fd)
                 }
                 else if (character == 0 && adjacent_character == 0)
                 {
-                        return 0;
+                        return width_left;
                 }
                 // (isspace(char) != 0 means whitespace)
                 else if (isspace(character) != 0 && isspace(adjacent_character) == 0)
@@ -66,7 +65,7 @@ int wrap(int width, char *buf, int output_fd)
                                 memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
                                 overflow = 1;                               //Sets global overflow boolean to true
 
-                                return 0;
+                                return width_left;
                         }
                 }
 
@@ -86,6 +85,7 @@ int wrap(int width, char *buf, int output_fd)
                                 write(output_fd, &overflow_buf[0], sizeof(char) * overcount); //Writes overflow part of word
                                 overflow = 0;                                                 //Resets overflow boolean
                                 word_len -= overcount;                                        //Removes overflow word size from word length
+                                width_left -= overcount;
                         }
                         else
                         {
@@ -103,6 +103,7 @@ int wrap(int width, char *buf, int output_fd)
                         found_end = 0;                                                 //Resets found end of word boolean
                 }
         }
+        return width_left;
         // We come out of this at the end of the buffer (i = 19)
         /* Next steps, if we end in the middle of a word put the beginning of that word in another buffer
         -> call read again to overwrite buffer
@@ -127,6 +128,7 @@ int main(int argc, char **argv)
     }*/
 
         width = atoi(argv[1]); //Gets the width from input
+        int width_left = width;
         if (width <= 0)
                 return EXIT_FAILURE;
 
@@ -148,7 +150,7 @@ int main(int argc, char **argv)
 
         while (bytes_read = read(input_fd, buf, BUFSIZE) > 0) //Continuously refreshes the buffer
         {
-                wrap(width, buf, output_fd); //Calls word wrapping method
+                width_left = wrap(width, buf, output_fd, width_left); //Calls word wrapping method
                 if (DEBUG)
                         printf("Refreshing Buffer\n");
                 memset(buf, 0, sizeof(char) * BUFSIZE);
