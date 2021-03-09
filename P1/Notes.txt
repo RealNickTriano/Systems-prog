@@ -1,0 +1,180 @@
+Regarding project 1:
+
+- yes, you will need to use opendir/readdir/closedir for part II
+- for this assignment, you must use the POSIX file IO functions
+	open, close, read, write
+	Do not use the buffered functions: fopen, fclose, putchar, etc.
+	
+	Anything that uses a file descriptor is okay
+	Anything that uses a FILE* is not allowed
+	
+- lseek is not forbidden, but you won't be able to use it
+	- lseek does not work for standard input, when standard input is a
+	  terminal (TTY)
+	- better to write a solution that does not rely on random file access
+		-> treat the input as a stream of bytes
+
+- how do we deal with a word that is is split between two or more calls to
+	read?
+	- e.g, we call read with some buffer size, and we get part of a word
+	-> that is what you need to figure out
+	-> use variables and heap objects to store data between calls
+	
+- do not care about where data from standard input comes from
+	- just read the byte stream
+	- if the stream contains \n, then that's a newline
+	
+	- if you want to test reading from stdin, just use redirection or a pipe
+	
+		./ww 80 < some_text.txt
+		echo 'this is a bunch of hooey' | ./ww 10
+
+- read returns 0 at end of file
+
+- treat all whitespace characters uniformly
+	-> but do look for whitespace runs that include two or more '\n'
+- treat all non-whitespace characters uniformly
+	use isspace() from <ctype.h>
+		-> returns true for ' ', '\n', '\t', '\r', '\v', a few others
+	all non-whitespace characters are part of a word
+
+- you can assume that your input will not include '\0'
+
+project 1
+---------
+
+Three scenarios
+1. reading from a file and writing to standard output
+2. reading from standard input and writing to standard output
+3. reading from a file and writing a different file
+
+Scenarios 1 and 2 are just special cases of 3
+	standard input is file descriptor 0
+	standard output is file descriptor 1
+
+you could create a single function that reads from a file descriptor and
+writes its output to a file descriptor
+
+You could easily write this function and have it handle all three cases
+
+	int wrap(unsigned width, int input_fd, int output_fd);
+	
+(e.g., return value indicates whether we exceeded the page width)
+
+	int error = wrap(page_width, 0, 1);  // scenario 2
+
+when we read/write from a file, we obtain a file descriptor from open
+
+
+Aside: since the width is always zero, why not use assert to check for bugs?
+
+	assert(width > 0);
+
+
+What is the idea of part I?
+What do I mean by efficient? How can we handle arbitrarily long files?
+
+Question: how much memory does our program need to use? What in our input
+	affects our memory requirements?
+	How much do we need to keep track of at any given moment?
+	
+Answer: we never need to have more than one word in memory at a time
+	as soon as we have complete word, we can decide whether to print it on
+	the current line, or start a new line
+	once we have printed a word, we don't need it any more
+	
+	so our program's memory requirement is O(n), where n is the length of
+	the longest word
+		we can still have additional memory use for variables, buffers, etc.,
+		but these can be O(1) size
+
+Important: you do not need to read an entire line at once
+	-> there is no easy way to do this! do not even try!
+
+- you do not need to build the line in memory and print it all at once
+	-> this is inefficient and unnecessary
+
+
+But what about buffering?
+	we can call read with a 1-character buffer, but this adds overhead to
+	our program
+		- each call to read involves a system call, which requires passing
+		  control to the OS (a "context switch")
+	if we have a buffer of 128 characters, then we only need to call read
+		every 128 characters (ideally)
+
+Idea: choose a buffer size (can be big or small, doesn't matter)
+
+	each time we call read, we try to fill the entire buffer
+		e.g., if our buffer is 10 chars, we might get
+				[Hello worl]
+		
+		
+	we iterate through the buffer
+		- return result from read tells us how much is in the buffer
+	
+	we examine each character and look for the start and end of words
+		start of a word is a whitespace character followed by a non-WS char
+		end of a word is a non-WS char followed by a WS char
+	
+	When we are in a word, we remember where it started (in the buffer)
+	Once we reach the end of the word, we know its length and which bytes
+		in the buffer make up the word
+		
+		[Hello worl]
+		 ^   first char in word
+		     ^ last char in word
+		word is 5 chars long
+	
+		at this point, we can just send that to write
+			-> remember, we can pass any pointer + size to write
+			
+			write(out_fd, &buf[word_start], word_len);
+	
+	But what happens when we reach the end of the buffer?
+	
+		[Hello worl]
+			   ^ first char in word
+			       ^ buffer ended, possibly inside a word
+
+		-> we know how big the partial word is
+		-> stash it somewhere
+		-> call read again (refresh the buffer)
+			-> overwrite the data in the buffer
+				-> we don't need it anymore
+
+		if the new buffer starts with WS, then the stashed text is
+			a complete word
+		otherwise, the stashed text is part of the word we are reading
+		-> how you manage this is up to you
+		
+		[d! ]
+			-> "d!" is the end of the word we stashed
+			-> so the complete word was "world!"
+
+	Beware words that are too large for the buffer!
+		if a word is too big for the buffer, just keep stashing it away
+		use any handy data structure for this
+
+If your code is written correctly, it shouldn't matter how big the buffer
+is; the same logic applies for a 1-byte buffer or a 1000-byte buffer
+
+
+What is "whitespace"?
+	Characters that don't have visible pixels on screen
+	' '   space
+	'\n'  newline
+	'\t'  tab
+	'\r'  carriage return
+	'\v'  vertical tab
+	etc.
+	
+	Use isspace()  from ctype.h
+		if isspace returns 1, the char is whitespace
+		otherwise, it is not
+
+Note: certain characters are "control codes"; these don't normally
+occur in text files, but are not considered whitespace
+	'\a'  bell
+	'\b'  backspace
+	etc.
