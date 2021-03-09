@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     
     
     // Check args
-    if(argc > 3 || argc == 0)                  // Make sure enough arguements are passed
+    if(argc > 3 || argc == 1)                  // Make sure enough arguements are passed
     {
         return EXIT_FAILURE;
     }
@@ -101,6 +101,8 @@ int main(int argc, char **argv)
     }*/
 
     width = atoi(argv[1]);                       // get the width from input (atoi casts to int)
+    if (width <= 0)
+        return EXIT_FAILURE;
     char buf[width];                            // create buffer with width as size
 
     input_fd = open(argv[2], O_RDONLY);         // Open input file in read only
@@ -127,4 +129,3 @@ int main(int argc, char **argv)
 
     return EXIT_SUCCESS;
 }
-
