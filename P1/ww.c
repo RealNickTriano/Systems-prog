@@ -31,12 +31,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 character = buf[i];
                 adjacent_character = buf[i + 1];
 
-                if (isspace(character) != 0 && overflow == 1)
-                {
-                        write(0, &overflow_buf[0], sizeof(char) * overcount);
-                        overflow = 0;
-                }
-                else if (character == 0 && adjacent_character == 0)
+                if (character == 0 && adjacent_character == 0)
                 {
                         return width_left;
                 }
@@ -62,6 +57,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                         extra_buf[overcount] = buf[k]; //Copies from buffer to extra buffer from the start of the word
                                         overcount++;
                                 }
+
                                 memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
                                 overflow = 1;                               //Sets global overflow boolean to true
 
