@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <dirent.h>
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -19,6 +19,10 @@
 int overflow = 0;
 int overcount = 0;
 int overflow_buf[64];
+int input_fd, output_fd, width;
+int width_left;
+int directory = 0;
+int file = 0;
 
 int wrap(int width, char *buf, int output_fd, int width_left)
 {
@@ -103,49 +107,27 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 }
         }
         return width_left;
-        // We come out of this at the end of the buffer (i = 19)
-        /* Next steps, if we end in the middle of a word put the beginning of that word in another buffer
-        -> call read again to overwrite buffer
-        -> If new buffer starts with a space then we have the completed word in other buffer
-        -> else keep going untill we find the space (part of word is still stashed)
-        -> words can be too big for the buffer.*/
 }
 
-int main(int argc, char **argv)
+int is_directory(const char *path)
 {
-        int input_fd, output_fd, bytes_read;
-        int width;
+        printf("isDIR");
+        struct stat statbuf;
+        stat(path, &statbuf);
+        return S_ISDIR(statbuf.st_mode);
+}
 
-        if (argc < 1 || argc > 3) //Checks number of arguments
-                return EXIT_FAILURE;
-        else                   //If no output file is given (argc = 2)
-                output_fd = 0; //Uses standard output
+int is_file(const char *path)
+{
+        struct stat statbuf;
+        stat(path, &statbuf);
+        return S_ISREG(statbuf.st_mode);
+}
 
-        if (argc == 3)         // check second arg if past
-        {
-                int status = stat(*argv[2], statbuf);
-        }
-
-        width = atoi(argv[1]); //Gets the width from input
-        int width_left = width;
-        if (width <= 0)
-                return EXIT_FAILURE;
-
-        char buf[BUFSIZE]; //Creates buffer with BUFSIZE
-
-        input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
-        if (input_fd == -1)
-        {
-                return EXIT_FAILURE;
-        }
-
-        for (int i = 0; i < width; i++)
-        {
-                write(0, " ", 1);
-        }
-
-        write(0, "|\n", 1);
-        write(0, "\n", 1);
+int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
+{
+        int bytes_read;
+        width_left = width;
 
         while (bytes_read = read(input_fd, buf, BUFSIZE) > 0) //Continuously refreshes the buffer
         {
@@ -155,13 +137,113 @@ int main(int argc, char **argv)
                 memset(buf, 0, sizeof(char) * BUFSIZE);
         }
 
-        putchar('\n'); //Adds line at the end of program for AESTHETIC purposes only
-
         if (bytes_read < 0)
         {
                 perror("Read error");
         }
+}
 
-        close(input_fd); //Closes input file
+int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
+{
+        char *output_name = "wrap.";
+        printf("managing dir...");
+        struct dirent *de; //struct to contain data about next file entry
+        dir_pointer = opendir(argv[2]);
+        if (dir_pointer == NULL)
+        {
+                perror("Problem opening directory");
+        }
+        int ch = chdir(argv[2]); // change working directory to dir_pointer file name
+        if (ch == -1)
+        {
+                perror("Problem changing directory");
+        }
+        printf("changing dir...");
+        while (de = readdir(dir_pointer)) // Loops through all files in the directory first two are "." and ".."
+        {                                 // access fields using de->d_ino, de->d_type, de->d_name
+                if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+                {
+                        // go to the next files
+                }
+                else
+                {
+                        if (de->d_type == DT_REG)
+                        {
+                                input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
+
+                                output_name = strcat(output_name, de->d_name); // make output file name
+                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT);
+                                if (output_fd == -1)
+                                {
+                                        return EXIT_FAILURE;
+                                }
+                                // need path for this too
+                                // Need to set input_fd/output_fd before call
+                                wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
+                                printf("wrapped file");
+                                close(input_fd);  //Closes input file(read)
+                                close(output_fd); //Closes output file(write)
+                        }
+                        else if (de->d_type == DT_DIR)
+                        {
+                                // go to next file, we skip subdirectories
+                        }
+                }
+        }
+}
+
+int main(int argc, char **argv)
+{
+
+        DIR *dir_pointer;
+
+        if (argc < 1 || argc > 3) //Checks number of arguments
+                return EXIT_FAILURE;
+        else if (argc == 2)    //If no output file is given (argc = 2)
+                output_fd = 0; //Uses standard output
+
+        width = atoi(argv[1]); //Gets the width from input
+        if (width <= 0)
+                return EXIT_FAILURE;
+
+        if (is_directory(argv[2]) != 0)
+        {
+                //this is a directory
+                directory = 1;
+                printf("%d", is_directory(argv[2]));
+                char buf[BUFSIZE]; //Creates buffer with BUFSIZE
+                manageDirectory(dir_pointer, argv, buf);
+        }
+
+        else if (is_file(argv[2]) != 0)
+        {
+                //this is a file
+                file = 1;
+                printf("\nFILE");
+                char buf[BUFSIZE];                  //Creates buffer with BUFSIZE
+                input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
+                if (input_fd == -1)
+                {
+                        return EXIT_FAILURE;
+                }
+                wrap_file(input_fd, buf, output_fd, width_left, width);
+        }
+
+        putchar('\n'); //Adds line at the end of program for AESTHETIC purposes only
+
+        if (file == 1) // If we just opened/wrote to one file
+        {
+                printf("\nFILE");
+                close(input_fd);  //Closes input file
+                close(output_fd); //Closes output file
+        }
+
+        if (directory == 1)
+        {
+                int dir = closedir(dir_pointer); //Close directory
+                if (dir = -1)
+                        perror("Error Closing Directory");
+        }
+
         return EXIT_SUCCESS;
 }
