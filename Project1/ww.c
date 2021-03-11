@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include "strbuf.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -80,7 +81,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 if (DEBUG)
                                         printf("Writing Overflow\n");
                                 word_len = overcount + (word_end - word_start + 1); //Word length is the sum of of the size of the overflow buffer plus size of current buffers remaining part of word
-                                if (word_len -1 > width_left)
+                                if (word_len > width_left)
                                 {                                  //Checks if word PLUS the space after it will fit in the desired width
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
@@ -93,7 +94,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         else
                         {
                                 word_len = word_end - word_start + 1;
-                                if (word_len -1 > width_left)
+                                if (word_len > width_left)
                                 {
                                         write(output_fd, "\n", 1);
                                         width_left = width;
@@ -108,14 +109,9 @@ int wrap(int width, char *buf, int output_fd, int width_left)
         }
         return width_left;
 }
-// double \n paragraph
-// word being longer than width
-// word being longer than buffer size
-// word exceeding memory
 
 int is_directory(const char *path)
 {
-        printf("isDIR");
         struct stat statbuf;
         stat(path, &statbuf);
         return S_ISDIR(statbuf.st_mode);
@@ -147,21 +143,35 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
         }
 }
 
+char *makeOutputFileName(char *d_name)
+{
+        strbuf_t strbuf;
+        sb_init(&strbuf, 100);
+        sb_concat(&strbuf, "wrap.");
+        sb_concat(&strbuf, d_name); // make output file name
+        int name_len = (int)(strlen(d_name) + strlen("wrap."));
+        char *output_name = malloc(name_len); // creates buffer with size of file name
+        for (int i = 0; i < name_len; i++)
+        {
+                output_name[i] = strbuf.data[i];
+        }                   // copys name in strbuf too output_name
+        return output_name; //return output file name
+}
+int compareFileName()
+{
+}
 int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
 {
-        char *output_name = "wrap.";
+        char *output_name;
         printf("managing dir...");
         struct dirent *de; //struct to contain data about next file entry
-        dir_pointer = opendir(argv[2]);
-        if (dir_pointer == NULL)
-        {
-                perror("Problem opening directory");
-        }
+
         int ch = chdir(argv[2]); // change working directory to dir_pointer file name
         if (ch == -1)
         {
                 perror("Problem changing directory");
         }
+
         printf("changing dir...");
         while (de = readdir(dir_pointer)) // Loops through all files in the directory first two are "." and ".."
         {                                 // access fields using de->d_ino, de->d_type, de->d_name
@@ -175,8 +185,9 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                         {
                                 input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
 
-                                output_name = strcat(output_name, de->d_name); // make output file name
-                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT);
+                                output_name = makeOutputFileName(de->d_name);
+
+                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
                                 if (output_fd == -1)
                                 {
                                         return EXIT_FAILURE;
@@ -214,7 +225,11 @@ int main(int argc, char **argv)
         {
                 //this is a directory
                 directory = 1;
-                printf("%d", is_directory(argv[2]));
+                dir_pointer = opendir(argv[2]);
+                if (dir_pointer == NULL)
+                {
+                        perror("Problem opening directory");
+                }
                 char buf[BUFSIZE]; //Creates buffer with BUFSIZE
                 manageDirectory(dir_pointer, argv, buf);
         }
@@ -223,7 +238,6 @@ int main(int argc, char **argv)
         {
                 //this is a file
                 file = 1;
-                printf("\nFILE");
                 char buf[BUFSIZE];                  //Creates buffer with BUFSIZE
                 input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
                 if (input_fd == -1)
@@ -237,7 +251,6 @@ int main(int argc, char **argv)
 
         if (file == 1) // If we just opened/wrote to one file
         {
-                printf("\nFILE");
                 close(input_fd);  //Closes input file
                 close(output_fd); //Closes output file
         }
