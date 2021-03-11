@@ -48,11 +48,11 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 write(output_fd, "\n", 1);
                                 write(output_fd, "\n", 1);
                                 paragraph = 1;
-                                continue;
                         }
                 }
                 else
-			paragraph = 0;
+                        paragraph = 0;
+
                 if (character == 0 && adjacent_character == 0)
                 {
                         return width_left;
@@ -61,8 +61,6 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 else if (isspace(character) != 0 && isspace(adjacent_character) == 0)
                 {
                         word_start = i + 1; //Starting index of word is set to the first LETTER
-			
-
                 }
                 else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
                 {
@@ -177,28 +175,30 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
         }
 }
 
-char *makeOutputFileName(char *d_name)
+char* makeOutputFileName(char *d_name)
 {
         strbuf_t strbuf;
         sb_init(&strbuf, 100);
         sb_concat(&strbuf, "wrap.");
         sb_concat(&strbuf, d_name); // make output file name
-        int name_len = (int)(strlen(d_name) + strlen("wrap."));
+	    int name_len = (int)(strlen(d_name) + strlen("wrap."));
         char *output_name = malloc(name_len); // creates buffer with size of file name
         for (int i = 0; i < name_len; i++)
         {
                 output_name[i] = strbuf.data[i];
-        }                   // copys name in strbuf too output_name
-        return output_name; //return output file name
+        }     // copys name in strbuf too output_name
+        return output_name;     //return output file name
 }
 int compareFileName()
 {
+        
 }
 int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
 {
         char *output_name;
         printf("managing dir...");
         struct dirent *de; //struct to contain data about next file entry
+        
 
         int ch = chdir(argv[2]); // change working directory to dir_pointer file name
         if (ch == -1)
@@ -220,6 +220,7 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                                 input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
 
                                 output_name = makeOutputFileName(de->d_name);
+                                	
 
                                 output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 666);
                                 if (output_fd == -1)
@@ -232,6 +233,7 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                                 printf("wrapped file");
                                 close(input_fd);  //Closes input file(read)
                                 close(output_fd); //Closes output file(write)
+				
                         }
                         else if (de->d_type == DT_DIR)
                         {
@@ -259,11 +261,11 @@ int main(int argc, char **argv)
         {
                 //this is a directory
                 directory = 1;
-                dir_pointer = opendir(argv[2]);
-                if (dir_pointer == NULL)
-                {
-                        perror("Problem opening directory");
-                }
+	            dir_pointer = opendir(argv[2]);
+        if (dir_pointer == NULL)
+        {
+                perror("Problem opening directory");
+        }
                 char buf[BUFSIZE]; //Creates buffer with BUFSIZE
                 manageDirectory(dir_pointer, argv, buf);
         }
@@ -295,7 +297,7 @@ int main(int argc, char **argv)
                 if (dir = -1)
                         perror("Error Closing Directory");
         }
-        if (big_word)
+         if (big_word)
                 return EXIT_FAILURE;
         return EXIT_SUCCESS;
 }
