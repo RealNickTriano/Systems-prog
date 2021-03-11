@@ -8,21 +8,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-int is_directory(const char *path)
-{
-        struct stat statbuf;
-        stat(path, &statbuf);
-        return S_ISDIR(statbuf.st_mode);
-}
-
-int is_file(const char *path)
-{
-        struct stat statbuf;
-        stat(path, &statbuf);
-        return S_ISREG(statbuf.st_mode);
-}
-
-
 int main(int argc, char **argv)
 {
         int input_fd, output_fd, bytes_read;

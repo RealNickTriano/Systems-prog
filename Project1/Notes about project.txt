@@ -5,19 +5,10 @@ use low level IO functions
 
 File I/O lectures started on 2/17
 
-
-Error conditions:
-	- if file DNE/cannot be opened use perror to report a message to the user and end with EXIT_FAILURE
-	- if input has a word that is longer than the page width, print it on a single line by itself
-		-> continue printing rest of file and exit with EXIT_FAILURE
-
-
-PART 2:
-	- when the 2nd argument is a directory ww will reformat each file in the directory
-		and write the output to a NEW file with the prefix "wrap"
-		./ww 80 foo --> makes any file in that directory wrap.fileName
-	- Ignore any files whose names begin with a period or the string "wrap"
-	- Use stat and macros S_ISDIR and S_ISREG to determine whether 2nd arg is file or directory
-			-> use stat or d_type field to distinguish files and subdirectories
-	
+List of issues:
+	- If statements detecting spacing are not working
+		-> isspace works on its own and I can do stuff based on if theres a space or not,
+			but when using && operator it seems to never work	
+			isspace can only say if its not a space?
+			ISSPACE RETURNS NONEZERO IF ITS A SPACE AND ZERO IF NOT THE LECTURE WAS A LIE.
 			
