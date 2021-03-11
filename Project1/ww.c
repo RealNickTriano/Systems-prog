@@ -18,9 +18,11 @@
 
 int overflow = 0;
 int overcount = 0;
-int overflow_buf[64];
+int overflow_buf[BUFSIZE];
 int input_fd, output_fd, width;
 int width_left;
+int big_word = 0;
+int paragraph = 0;
 int directory = 0;
 int file = 0;
 
@@ -28,7 +30,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
 {
         char character, adjacent_character;
         int found_end = 0;  //A boolean to check if we found the end of a word
-        char extra_buf[64]; //An extra buffer to copy to global overflow buffer
+        char extra_buf[BUFSIZE]; //An extra buffer to copy to global overflow buffer
         int word_len;
         int word_start = 0; //The start position of a word
         int word_end = 0;   //The end position of a word
@@ -37,6 +39,16 @@ int wrap(int width, char *buf, int output_fd, int width_left)
         {
                 character = buf[i];
                 adjacent_character = buf[i + 1];
+
+                if (character = '\n' && adjacent_character = '\n'){
+                        if (paragraph != 1){
+                                write(output_fd, "\n", 1)
+                                write(output_fd, "\n", 1)
+                                paragraph = 1;
+                        }
+                }
+                else
+                        paragraph = 0;
 
                 if (character == 0 && adjacent_character == 0)
                 {
@@ -71,7 +83,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 return width_left;
                         }
                 }
-
+                int big_width = 0;
                 if (found_end == 1)
                 {
                         //if (DEBUG) printf("Finished Word \n");
@@ -80,8 +92,11 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 if (DEBUG)
                                         printf("Writing Overflow\n");
                                 word_len = overcount + (word_end - word_start + 1); //Word length is the sum of of the size of the overflow buffer plus size of current buffers remaining part of word
-                                if (word_len -1 > width_left)
-                                {                                  //Checks if word PLUS the space after it will fit in the desired width
+                                if (word_len > width_left) //Checks if word PLUS the space after it will fit in the desired width
+                                {            
+                                        if (word_len > width){
+                                                big_width = 1;
+                                        }                    
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
                                 }
@@ -93,16 +108,24 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         else
                         {
                                 word_len = word_end - word_start + 1;
-                                if (word_len -1 > width_left)
+                                if (word_len > width_left)
                                 {
+                                        if (word_len > width){
+                                                big_width = 1;
+                                        }  
                                         write(output_fd, "\n", 1);
                                         width_left = width;
                                 }
                         }
-                        //if (DEBUG) printf("Writing Word Length %d \n", word_len);
+                        //if (DEBUG) printf("Writing Word Length %d \n", word_len);     
                         write(output_fd, &buf[word_start], sizeof(char) * (word_len)); //Writes full word OR remainder after overflow
                         write(output_fd, " ", 1);                                      //Writes space after word
                         width_left -= word_len + 1;                                    //Removes word + space from width
+                        if (big_width){
+                                write(output_fd, "\n", 1);
+                                big_word = 1;
+                                width_left = width
+                        }
                         found_end = 0;                                                 //Resets found end of word boolean
                 }
         }
@@ -249,5 +272,7 @@ int main(int argc, char **argv)
                         perror("Error Closing Directory");
         }
 
+        if (big_word)
+                return EXIT_FAILURE
         return EXIT_SUCCESS;
 }
