@@ -19,9 +19,11 @@
 
 int overflow = 0;
 int overcount = 0;
-int overflow_buf[64];
+int overflow_buf[BUFSIZE];
 int input_fd, output_fd, width;
 int width_left;
+int big_word = 0;
+int paragraph = 0;
 int directory = 0;
 int file = 0;
 
@@ -29,7 +31,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
 {
         char character, adjacent_character;
         int found_end = 0;  //A boolean to check if we found the end of a word
-        char extra_buf[64]; //An extra buffer to copy to global overflow buffer
+        char extra_buf[BUFSIZE]; //An extra buffer to copy to global overflow buffer
         int word_len;
         int word_start = 0; //The start position of a word
         int word_end = 0;   //The end position of a word
@@ -38,6 +40,16 @@ int wrap(int width, char *buf, int output_fd, int width_left)
         {
                 character = buf[i];
                 adjacent_character = buf[i + 1];
+
+                if (character = '\n' && adjacent_character = '\n'){
+                        if (paragraph != 1){
+                                write(output_fd, "\n", 1)
+                                write(output_fd, "\n", 1)
+                                paragraph = 1;
+                        }
+                }
+                else
+                        paragraph = 0;
 
                 if (character == 0 && adjacent_character == 0)
                 {
@@ -57,6 +69,9 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 {
                         if (i == BUFSIZE - 1)
                         { //If we reach the end of the buffer in the middle of a word
+                                //if (word_start = 0){
+                                        //bigbuffer(output_fd, buf);
+                                        //return width_left
                                 if (DEBUG)
                                         printf("Accessing Overflow Buffer \n");
                                 overcount = 0; //Sets overflow buffer size count to zero
@@ -68,11 +83,10 @@ int wrap(int width, char *buf, int output_fd, int width_left)
 
                                 memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
                                 overflow = 1;                               //Sets global overflow boolean to true
-
                                 return width_left;
                         }
                 }
-
+                int big_width = 0;
                 if (found_end == 1)
                 {
                         //if (DEBUG) printf("Finished Word \n");
@@ -81,8 +95,11 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 if (DEBUG)
                                         printf("Writing Overflow\n");
                                 word_len = overcount + (word_end - word_start + 1); //Word length is the sum of of the size of the overflow buffer plus size of current buffers remaining part of word
-                                if (word_len > width_left)
-                                {                                  //Checks if word PLUS the space after it will fit in the desired width
+                                if (word_len > width_left) //Checks if word PLUS the space after it will fit in the desired width
+                                {            
+                                        if (word_len > width){
+                                                big_width = 1;
+                                        }                    
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
                                 }
@@ -96,22 +113,33 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 word_len = word_end - word_start + 1;
                                 if (word_len > width_left)
                                 {
+                                        if (word_len > width){
+                                                big_width = 1;
+                                        }  
                                         write(output_fd, "\n", 1);
                                         width_left = width;
                                 }
                         }
-                        //if (DEBUG) printf("Writing Word Length %d \n", word_len);
+                        //if (DEBUG) printf("Writing Word Length %d \n", word_len);     
                         write(output_fd, &buf[word_start], sizeof(char) * (word_len)); //Writes full word OR remainder after overflow
                         write(output_fd, " ", 1);                                      //Writes space after word
                         width_left -= word_len + 1;                                    //Removes word + space from width
+                        if (big_width){
+                                write(output_fd, "\n", 1);
+                                big_word = 1;
+                                width_left = width
+                        }
                         found_end = 0;                                                 //Resets found end of word boolean
                 }
         }
         return width_left;
 }
+// word being longer than buffer size
+// word exceeding memory
 
 int is_directory(const char *path)
 {
+        printf("isDIR");
         struct stat statbuf;
         stat(path, &statbuf);
         return S_ISDIR(statbuf.st_mode);
@@ -143,37 +171,21 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
         }
 }
 
-char* makeOutputFileName(char *d_name)
-{
-        strbuf_t strbuf;
-        sb_init(&strbuf, 100);
-        sb_concat(&strbuf, "wrap.");
-        sb_concat(&strbuf, d_name); // make output file name
-	int name_len = (int)(strlen(d_name) + strlen("wrap."));
-        char *output_name = malloc(name_len); // creates buffer with size of file name
-        for (int i = 0; i < name_len; i++)
-        {
-                output_name[i] = strbuf.data[i];
-        }     // copys name in strbuf too output_name
-        return output_name;     //return output file name
-}
-int compareFileName()
-{
-        
-}
 int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
 {
-        char *output_name;
+        char *output_name = "wrap.";
         printf("managing dir...");
         struct dirent *de; //struct to contain data about next file entry
-        
-
+        dir_pointer = opendir(argv[2]);
+        if (dir_pointer == NULL)
+        {
+                perror("Problem opening directory");
+        }
         int ch = chdir(argv[2]); // change working directory to dir_pointer file name
         if (ch == -1)
         {
                 perror("Problem changing directory");
         }
-
         printf("changing dir...");
         while (de = readdir(dir_pointer)) // Loops through all files in the directory first two are "." and ".."
         {                                 // access fields using de->d_ino, de->d_type, de->d_name
@@ -187,10 +199,8 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                         {
                                 input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
 
-                                output_name = makeOutputFileName(de->d_name);
-                                	
-
-                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                                output_name = strcat(output_name, de->d_name); // make output file name
+                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT);
                                 if (output_fd == -1)
                                 {
                                         return EXIT_FAILURE;
@@ -201,7 +211,6 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                                 printf("wrapped file");
                                 close(input_fd);  //Closes input file(read)
                                 close(output_fd); //Closes output file(write)
-				
                         }
                         else if (de->d_type == DT_DIR)
                         {
@@ -229,11 +238,7 @@ int main(int argc, char **argv)
         {
                 //this is a directory
                 directory = 1;
-	dir_pointer = opendir(argv[2]);
-        if (dir_pointer == NULL)
-        {
-                perror("Problem opening directory");
-        }
+                printf("%d", is_directory(argv[2]));
                 char buf[BUFSIZE]; //Creates buffer with BUFSIZE
                 manageDirectory(dir_pointer, argv, buf);
         }
@@ -242,6 +247,7 @@ int main(int argc, char **argv)
         {
                 //this is a file
                 file = 1;
+                printf("\nFILE");
                 char buf[BUFSIZE];                  //Creates buffer with BUFSIZE
                 input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
                 if (input_fd == -1)
@@ -255,6 +261,7 @@ int main(int argc, char **argv)
 
         if (file == 1) // If we just opened/wrote to one file
         {
+                printf("\nFILE");
                 close(input_fd);  //Closes input file
                 close(output_fd); //Closes output file
         }
@@ -266,5 +273,7 @@ int main(int argc, char **argv)
                         perror("Error Closing Directory");
         }
 
+        if (big_word)
+                return EXIT_FAILURE
         return EXIT_SUCCESS;
 }
