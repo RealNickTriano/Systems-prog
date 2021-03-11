@@ -80,7 +80,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 if (DEBUG)
                                         printf("Writing Overflow\n");
                                 word_len = overcount + (word_end - word_start + 1); //Word length is the sum of of the size of the overflow buffer plus size of current buffers remaining part of word
-                                if (word_len > width_left)
+                                if (word_len -1 > width_left)
                                 {                                  //Checks if word PLUS the space after it will fit in the desired width
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
@@ -93,7 +93,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         else
                         {
                                 word_len = word_end - word_start + 1;
-                                if (word_len > width_left)
+                                if (word_len -1 > width_left)
                                 {
                                         write(output_fd, "\n", 1);
                                         width_left = width;
@@ -108,6 +108,10 @@ int wrap(int width, char *buf, int output_fd, int width_left)
         }
         return width_left;
 }
+// double \n paragraph
+// word being longer than width
+// word being longer than buffer size
+// word exceeding memory
 
 int is_directory(const char *path)
 {
