@@ -48,10 +48,12 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         {
                                 write(output_fd, "\n", 1);
                                 write(output_fd, "\n", 1);
+                                width_left = width;
                                 paragraph = 1;
                                 continue;
                         }
                 }
+               
                 else
                         paragraph = 0;
                 if (character == 0 && adjacent_character == 0)
@@ -163,7 +165,7 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
         int bytes_read;
         width_left = width;
 
-        while (bytes_read = read(input_fd, buf, BUFSIZE) > 0) //Continuously refreshes the buffer
+        while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //Continuously refreshes the buffer
         {
                 if (overflow == 0){
                         sb_destroy(&overflow_buf);
@@ -181,6 +183,7 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
         {
                 perror("Read error");
         }
+	return 0;
 }
 
 char *makeOutputFileName(char *d_name)
@@ -195,6 +198,7 @@ char *makeOutputFileName(char *d_name)
         {
                 output_name[i] = strbuf.data[i];
         }                   // copys name in strbuf too output_name
+        sb_destroy(&strbuf);
         return output_name; //return output file name
 }
 int compareFileName(char *output_name) // Checks how many of the first 5 characters match "wrap."
@@ -219,7 +223,7 @@ int compareFileName(char *output_name) // Checks how many of the first 5 charact
 int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
 {
         char *output_name;
-        printf("managing dir...");
+        
         struct dirent *de; //struct to contain data about next file entry
 
         int ch = chdir(argv[2]); // change working directory to dir_pointer file name
@@ -228,8 +232,8 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                 perror("Problem changing directory");
         }
 
-        printf("changing dir...");
-        while (de = readdir(dir_pointer)) // Loops through all files in the directory first two are "." and ".."
+        
+        while ((de = readdir(dir_pointer))) // Loops through all files in the directory first two are "." and ".."
         {                                 // access fields using de->d_ino, de->d_type, de->d_name
                 if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
                 {
@@ -270,6 +274,7 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                         }
                 }
         }
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -279,22 +284,24 @@ int main(int argc, char **argv)
 
         if (argc < 1 || argc > 3) //Checks number of arguments
                 return EXIT_FAILURE;
-        else if (argc == 2)    //If no input file is given (argc = 2)
-        {
-                /*char buf[BUFSIZE];
-                // read from stdin
-                // write to stdout 
-                wrap_file(input_fd, buf, output_fd, width_left, width);   */
-                output_fd = 0;
-        }
         
-
         width = atoi(argv[1]); //Gets the width from input
         if (width <= 0)
                 return EXIT_FAILURE;
-
         sb_init(&overflow_buf, BUFSIZE);
 
+        if (argc == 2)          //filename not present
+        {
+                char buf[BUFSIZE];
+                // read from stdin
+                input_fd = 0;
+                // write to stdout 
+                output_fd = 0;
+                wrap_file(input_fd, buf, output_fd, width_left, width);
+        }
+
+if (argc == 3)
+{
         if (is_directory(argv[2]) != 0)
         {
                 //this is a directory
@@ -321,7 +328,9 @@ int main(int argc, char **argv)
                 }
                 wrap_file(input_fd, buf, output_fd, width_left, width);
         }
-
+        
+        
+}
         putchar('\n'); //Adds line at the end of program for AESTHETIC purposes only
 
         if (file == 1) // If we just opened/wrote to one file
