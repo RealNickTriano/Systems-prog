@@ -19,8 +19,7 @@
 
 int overflow = 0;
 int overcount = 0;
-strbuf_t overflow_buf;
-//int overflow_buf[BUFSIZE];
+int overflow_buf[BUFSIZE];
 int input_fd, output_fd, width;
 int width_left;
 int big_word = 0;
@@ -53,7 +52,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         }
                 }
                 else
-			paragraph = 0;
+                        paragraph = 0;
                 if (character == 0 && adjacent_character == 0)
                 {
                         return width_left;
@@ -62,8 +61,6 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 else if (isspace(character) != 0 && isspace(adjacent_character) == 0)
                 {
                         word_start = i + 1; //Starting index of word is set to the first LETTER
-			
-
                 }
                 else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
                 {
@@ -86,8 +83,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                         overcount++;
                                 }
 
-                                //memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
-                                sb_concat(&overflow_buf, extra_buf);
+                                memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
                                 overflow = 1;                               //Sets global overflow boolean to true
                                 return width_left;
                         }
@@ -110,7 +106,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
                                 }
-                                write(output_fd, &overflow_buf->data[0], sizeof(char) * overcount); //Writes overflow part of word
+                                write(output_fd, &overflow_buf[0], sizeof(char) * overcount); //Writes overflow part of word
                                 overflow = 0;                                                 //Resets overflow boolean
                                 word_len -= overcount;                                        //Removes overflow word size from word length
                                 width_left -= overcount;
@@ -167,17 +163,11 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
 
         while (bytes_read = read(input_fd, buf, BUFSIZE) > 0) //Continuously refreshes the buffer
         {
-                if (overflow == 0){
-                        sb_destroy(&overflow_buf);
-                        sb_init(&overflow_buf, BUFSIZE);
-                }
                 width_left = wrap(width, buf, output_fd, width_left); //Calls word wrapping method
                 if (DEBUG)
                         printf("Refreshing Buffer\n");
                 memset(buf, 0, sizeof(char) * BUFSIZE);
         }
-
-        sb_destroy(&overflow_buf);
 
         if (bytes_read < 0)
         {
@@ -199,7 +189,7 @@ char *makeOutputFileName(char *d_name)
         }                   // copys name in strbuf too output_name
         return output_name; //return output file name
 }
-int compareFileName(char* output_name) // Checks how many of the first 5 characters match "wrap."
+int compareFileName(char *output_name) // Checks how many of the first 5 characters match "wrap."
 {
         char *wrap = malloc(5);
         wrap[0] = 'w';
@@ -241,19 +231,30 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                 {
                         if (de->d_type == DT_REG)
                         {
-                                output_name = makeOutputFileName(de->d_name); // returns correct file name for our outputfile
-                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                                free(output_name);
-                                if (output_fd == -1)
-                                {
-                                        return EXIT_FAILURE;
-                                }
-                                // need path for this too
-                                // Need to set input_fd/output_fd before call
-                                wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
+                                input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
 
-                                close(input_fd);  //Closes input file(read)
-                                close(output_fd); //Closes output file(write)
+                                int eq_chars = compareFileName(de->d_name); // returns how many chracters matched
+
+                                if (eq_chars == 5)
+                                {
+                                        // Skip this file it was already wrapped
+                                }
+                                else
+                                {
+                                        output_name = makeOutputFileName(de->d_name); // returns correct file name for our outputfile
+                                        output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                                        free(output_name);
+                                        if (output_fd == -1)
+                                        {
+                                                return EXIT_FAILURE;
+                                        }
+                                        // need path for this too
+                                        // Need to set input_fd/output_fd before call
+                                        wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
+
+                                        close(input_fd);  //Closes input file(read)
+                                        close(output_fd); //Closes output file(write)
+                                }
                         }
                         else if (de->d_type == DT_DIR)
                         {
@@ -270,14 +271,19 @@ int main(int argc, char **argv)
 
         if (argc < 1 || argc > 3) //Checks number of arguments
                 return EXIT_FAILURE;
-        else if (argc == 2)    //If no output file is given (argc = 2)
-                output_fd = 0; //Uses standard output
+        else if (argc == 2)    //If no input file is given (argc = 2)
+        {
+                /*char buf[BUFSIZE];
+                // read from stdin
+                // write to stdout 
+                wrap_file(input_fd, buf, output_fd, width_left, width);   */
+                output_fd = 0;
+        }
+        
 
         width = atoi(argv[1]); //Gets the width from input
         if (width <= 0)
                 return EXIT_FAILURE;
-
-        sb_init(&overflow_buf, BUFSIZE);
 
         if (is_directory(argv[2]) != 0)
         {
@@ -286,7 +292,7 @@ int main(int argc, char **argv)
                 dir_pointer = opendir(argv[2]);
                 if (dir_pointer == NULL)
                 {
-                        perror("Problem opening directory");
+                        perror("Problem opening directory in main");
                 }
                 char buf[BUFSIZE]; //Creates buffer with BUFSIZE
                 manageDirectory(dir_pointer, argv, buf);
@@ -296,6 +302,7 @@ int main(int argc, char **argv)
         {
                 //this is a file
                 file = 1;
+                output_fd = 0;
                 char buf[BUFSIZE];                  //Creates buffer with BUFSIZE
                 input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
                 if (input_fd == -1)
@@ -317,7 +324,7 @@ int main(int argc, char **argv)
         {
                 int dir = closedir(dir_pointer); //Close directory
                 if (dir == -1)
-                        perror("Error Closing Directory");
+                        perror("Error Closing Directory in main");
         }
         if (big_word)
                 return EXIT_FAILURE;
