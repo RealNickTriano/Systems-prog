@@ -19,7 +19,8 @@
 
 int overflow = 0;
 int overcount = 0;
-int overflow_buf[BUFSIZE];
+strbuf_t overflow_buf[BUFSIZE];
+//int overflow_buf[BUFSIZE];
 int input_fd, output_fd, width;
 int width_left;
 int big_word = 0;
@@ -83,7 +84,8 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                         overcount++;
                                 }
 
-                                memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
+                                //memcpy(overflow_buf, extra_buf, overcount); //Sets global overflow buffer to equal extra buffer
+                                sb_concat(&overflow_buf, extra_buf);
                                 overflow = 1;                               //Sets global overflow boolean to true
                                 return width_left;
                         }
@@ -106,7 +108,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                         write(output_fd, "\n", 1); //If there's not enough space starts a new line
                                         width_left = width;
                                 }
-                                write(output_fd, &overflow_buf[0], sizeof(char) * overcount); //Writes overflow part of word
+                                write(output_fd, &overflow_buf.data[0], sizeof(char) * overcount); //Writes overflow part of word
                                 overflow = 0;                                                 //Resets overflow boolean
                                 word_len -= overcount;                                        //Removes overflow word size from word length
                                 width_left -= overcount;
@@ -163,11 +165,17 @@ int wrap_file(int input_fd, char *buf, int output_fd, int width_left, int width)
 
         while (bytes_read = read(input_fd, buf, BUFSIZE) > 0) //Continuously refreshes the buffer
         {
+                if (overflow == 0){
+                        sb_destroy(&overflow_buf);
+                        sb_init(&overflow_buf, BUFSIZE);
+                }
                 width_left = wrap(width, buf, output_fd, width_left); //Calls word wrapping method
                 if (DEBUG)
                         printf("Refreshing Buffer\n");
                 memset(buf, 0, sizeof(char) * BUFSIZE);
         }
+
+        sb_destroy(&overflow_buf);
 
         if (bytes_read < 0)
         {
@@ -284,6 +292,8 @@ int main(int argc, char **argv)
         width = atoi(argv[1]); //Gets the width from input
         if (width <= 0)
                 return EXIT_FAILURE;
+
+        sb_init(&overflow_buf, BUFSIZE);
 
         if (is_directory(argv[2]) != 0)
         {
