@@ -52,7 +52,7 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                         }
                 }
                 else
-			paragraph = 0;
+                        paragraph = 0;
                 if (character == 0 && adjacent_character == 0)
                 {
                         return width_left;
@@ -61,8 +61,6 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                 else if (isspace(character) != 0 && isspace(adjacent_character) == 0)
                 {
                         word_start = i + 1; //Starting index of word is set to the first LETTER
-			
-
                 }
                 else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
                 {
@@ -191,8 +189,24 @@ char *makeOutputFileName(char *d_name)
         }                   // copys name in strbuf too output_name
         return output_name; //return output file name
 }
-int compareFileName()
+int compareFileName(char *output_name) // Checks how many of the first 5 characters match "wrap."
 {
+        char *wrap = malloc(5);
+        wrap[0] = 'w';
+        wrap[1] = 'r';
+        wrap[2] = 'a';
+        wrap[3] = 'p';
+        wrap[4] = '.';
+        int j = 0;
+        for (int i = 0; i < 5; i++)
+        {
+                if (output_name[i] == wrap[i])
+                {
+                        j++;
+                }
+        }
+        free(wrap);
+        return j;
 }
 int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
 {
@@ -219,19 +233,28 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                         {
                                 input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
 
-                                output_name = makeOutputFileName(de->d_name);
+                                int eq_chars = compareFileName(de->d_name); // returns how many chracters matched
 
-                                output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 666);
-                                if (output_fd == -1)
+                                if (eq_chars == 5)
                                 {
-                                        return EXIT_FAILURE;
+                                        // Skip this file it was already wrapped
                                 }
-                                // need path for this too
-                                // Need to set input_fd/output_fd before call
-                                wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
-                                printf("wrapped file");
-                                close(input_fd);  //Closes input file(read)
-                                close(output_fd); //Closes output file(write)
+                                else
+                                {
+                                        output_name = makeOutputFileName(de->d_name); // returns correct file name for our outputfile
+                                        output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                                        free(output_name);
+                                        if (output_fd == -1)
+                                        {
+                                                return EXIT_FAILURE;
+                                        }
+                                        // need path for this too
+                                        // Need to set input_fd/output_fd before call
+                                        wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
+
+                                        close(input_fd);  //Closes input file(read)
+                                        close(output_fd); //Closes output file(write)
+                                }
                         }
                         else if (de->d_type == DT_DIR)
                         {
@@ -262,7 +285,7 @@ int main(int argc, char **argv)
                 dir_pointer = opendir(argv[2]);
                 if (dir_pointer == NULL)
                 {
-                        perror("Problem opening directory");
+                        perror("Problem opening directory in main");
                 }
                 char buf[BUFSIZE]; //Creates buffer with BUFSIZE
                 manageDirectory(dir_pointer, argv, buf);
@@ -292,8 +315,8 @@ int main(int argc, char **argv)
         if (directory == 1)
         {
                 int dir = closedir(dir_pointer); //Close directory
-                if (dir = -1)
-                        perror("Error Closing Directory");
+                if (dir == -1)
+                        perror("Error Closing Directory in main");
         }
         if (big_word)
                 return EXIT_FAILURE;
