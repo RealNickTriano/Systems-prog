@@ -79,7 +79,8 @@ int wrap(int width, char *buf, int output_fd, int width_left)
                                 //return width_left
                                 if (DEBUG)
                                         printf("Accessing Overflow Buffer \n");
-                                overcount = 0; //Sets overflow buffer size count to zero
+				if(overflow != 1)
+                                	overcount = 0; //Sets overflow buffer size count to zero
                                 for (int k = word_start; k < BUFSIZE; k++)
                                 {
                                         extra_buf[overcount] = buf[k]; //Copies from buffer to extra buffer from the start of the word
@@ -244,6 +245,10 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                         if (de->d_type == DT_REG)
                         {
                                 input_fd = open(de->d_name, O_RDONLY); //also need directory name for full path i think
+                                if (input_fd == -1)
+                                {
+                                        perror("could not open input file in manageDirectory");
+                                }
 
                                 int eq_chars = compareFileName(de->d_name); // returns how many chracters matched
 
@@ -255,17 +260,23 @@ int manageDirectory(DIR *dir_pointer, char **argv, char *buf)
                                 {
                                         output_name = makeOutputFileName(de->d_name); // returns correct file name for our outputfile
                                         output_fd = open(output_name, O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                                        free(output_name);
                                         if (output_fd == -1)
                                         {
-                                                return EXIT_FAILURE;
+                                                perror("cannot open output file in manageDirectory");
                                         }
+                                        free(output_name);
+                                        
                                         // need path for this too
                                         // Need to set input_fd/output_fd before call
+					
                                         wrap_file(input_fd, buf, output_fd, width_left, width); // Call wrap on the file
-
-                                        close(input_fd);  //Closes input file(read)
-                                        close(output_fd); //Closes output file(write)
+					sb_init(&overflow_buf, BUFSIZE);
+                                        int c = close(input_fd);  //Closes input file(read)
+                                        if (c == -1)
+                                                perror("cannot close input file in manageDirectory");
+                                        c = close(output_fd); //Closes output file(write)
+                                        if (c == -1)
+                                                perror("cannot close output file in manageDirectory");
                                 }
                         }
                         else if (de->d_type == DT_DIR)
@@ -324,6 +335,7 @@ if (argc == 3)
                 input_fd = open(argv[2], O_RDONLY); //Opens input file in read only
                 if (input_fd == -1)
                 {
+                        perror("cannot open file in main");
                         return EXIT_FAILURE;
                 }
                 wrap_file(input_fd, buf, output_fd, width_left, width);
@@ -335,8 +347,16 @@ if (argc == 3)
 
         if (file == 1) // If we just opened/wrote to one file
         {
-                close(input_fd);  //Closes input file
-                close(output_fd); //Closes output file
+                int c = close(input_fd);  //Closes input file
+                if (c == -1)
+                {
+                        perror("cannot close input file in main");
+                }
+                c = close(output_fd); //Closes output file
+                if (c == -1)
+                {
+                        perror("cannot close output file in main");
+                }
         }
 
         if (directory == 1)
