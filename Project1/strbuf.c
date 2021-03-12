@@ -125,7 +125,6 @@ int sb_insert(strbuf_t *S, int index, char item){
 int sb_concat(strbuf_t *S, char *str){
         for (int i = 0; i < strlen(str); i++){
                 sb_append(S, str[i]);
-                dump(S);
         }
         return 0;
 }

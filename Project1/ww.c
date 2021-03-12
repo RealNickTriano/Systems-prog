@@ -19,7 +19,7 @@
 
 int overflow = 0;
 int overcount = 0;
-strbuf_t overflow_buf[BUFSIZE];
+strbuf_t overflow_buf;
 //int overflow_buf[BUFSIZE];
 int input_fd, output_fd, width;
 int width_left;

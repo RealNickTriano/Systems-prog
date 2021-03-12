@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <stdio.h>
+
 typedef struct {
     size_t length;
     size_t used;
