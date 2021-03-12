@@ -7,8 +7,6 @@
 #define DEBUG 0
 #endif
 
-
-
 int sb_init(strbuf_t *S, size_t length)
 {
         S->data = malloc(sizeof(char) * length);
@@ -30,7 +28,7 @@ int sb_append(strbuf_t *S, char item)
 {
         if (S->used >= S->length) {
                 size_t size = S->length * 2;
-                int *p = realloc(S->data, sizeof(char) * size);
+                char *p = realloc(S->data, sizeof(char) * size);
                 if (!p) return 1;
 
                 S->data = p;
@@ -69,7 +67,7 @@ int sb_insert(strbuf_t *S, int index, char item){
         if (index + 1 >= S->length){
                 if (index + 1 >= (S->length * 2)){
                         size_t size = index + 2;
-                        int *p = realloc(S->data, sizeof(char) * size);
+                        char *p = realloc(S->data, sizeof(char) * size);
                         if (!p) return 1;
                         
                         S->data = p;
@@ -79,7 +77,7 @@ int sb_insert(strbuf_t *S, int index, char item){
                 }
                 else{
                         size_t size = S->length * 2;
-                        int *p = realloc(S->data, sizeof(char) * size);
+                        char *p = realloc(S->data, sizeof(char) * size);
                         if (!p) return 1;
 
                         S->data = p;
@@ -105,7 +103,7 @@ int sb_insert(strbuf_t *S, int index, char item){
         else{
                 if (S->used == S->length - 1){
                         size_t size = S->length * 2;
-                        int *p = realloc(S->data, sizeof(char) * size);
+                        char *p = realloc(S->data, sizeof(char) * size);
                         if (!p) return 1;
 
                         S->data = p;
@@ -127,7 +125,7 @@ int sb_insert(strbuf_t *S, int index, char item){
 int sb_concat(strbuf_t *S, char *str){
         for (int i = 0; i < strlen(str); i++){
                 sb_append(S, str[i]);
-                
+                dump(S);
         }
         return 0;
 }
