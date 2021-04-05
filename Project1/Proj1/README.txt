@@ -1,6 +1,8 @@
 Shihab Siddique shs162
 Nicholas Triano ndt26
 
+To be compiled with strbuf.c and strbuf.h
+
 We went to text generators to find decent sized sample texts and then went in and made random paragraph spacing and word spacing.
 Then, we examined the output manually using a '|' character to tell where the width ends. We encountered numerous types of issues
 during this proccess so we feel a good amount of confidence in our programs capapbilities.
