@@ -36,6 +36,11 @@ int SetOptions(char *argv)
     {
         // set new file name suffix
     }
+    else
+    {
+        fprintf(stderr, "Invalid Optional Argument: %s\n", argv);
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }
 
