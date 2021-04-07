@@ -17,6 +17,7 @@
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
 char file_name_suffix[] = ".txt";
 
+
 int SetOptions(char *argv)
 {
     if(strncmp(argv, "-d", sizeof(char) * 2) == 0)
@@ -38,34 +39,35 @@ int SetOptions(char *argv)
     return 0;
 }
 
-int CheckArgs(char **argv)
+int CheckArgs(char **argv, int opt_arg_count)
 {
+     // number of optional arguments inputed
 
     for (int i = 0; i < 4; i++)
     {
         if (strncmp(argv[i], "-", sizeof(char)) == 0) // found an optional arg
         {
             SetOptions(argv[i]); // set thread/file suffix value
+            opt_arg_count++;
         }
     }
-    return 0;
+    return opt_arg_count;
     
 }
 int main(int argc, char **argv)
 {
+    int opt_arg_count = 0;
+    
     if (argc < 3) //not enough arguments
     {
         return EXIT_FAILURE;
     }
 
-    CheckArgs(argv); // Check for optional arguments, we will limit these to come before and typed once
+    opt_arg_count = CheckArgs(argv, opt_arg_count); // Check for optional arguments, we will limit these to come before and typed once
 
 	if(DEBUG)
 	{
-		printf("dir threads: %d\n
-                file threads: %d\n
-                analysis threads: %d\n", 
-                directory_threads, file_threads, analysis_threads);
+		printf("dir threads: %d\nfile threads: %d\nanalysis threads: %d\noptional arguments: %d\n",directory_threads, file_threads, analysis_threads, opt_arg_count);
 	}
     return EXIT_SUCCESS;
 }
