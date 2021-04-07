@@ -127,9 +127,51 @@ PROGRAM ORGANIZATION:
         - File threads -> Each file thread is a loop that repeatedly dequeues a file name from the file queue,
             tokenizes the file and computes its WFD, and adds the data for that file to the WFD repository
             - A file thread will finish once the queue is empty and all directory threads have finished
+    
+    Note: working directory is shared by all threads
+        -> directory threads cannot use chdir()
+        -> instead, concate directory name and the file/subdirectory name to get a path
+        -> assume all file/dir names given as arguments are relative to the working directory
+    
+    Note: need to customize synchronized queue somewhat
+        -> when directory queue is empty, keep track of the number of threads waiting to dequeue
+        -> once the last thread tries to dequeue, you can be certain no new directories will be found
+        -> set a flag indicating that traversal has ended and wake up directory threads so they can terminate
+        -> file threads should terminate if the file queue is empty and traversal has ended(no more files will be added)
+    
+        Error Conditions:
+            - If any file/dir cannot be opened report an error and continue processing
+            - It is sufficent to call perror() with the name of the file/dir to report the error
+                -> exit with EXIT_FAILURE when the program completes
+            - For unexpected errors, report error and terminate immediately
+                -> e.g. failure to create threads or lock and unlock mutexes
 
-
-
+    ANALYSIS PHASE:
+        - computes JSD and combined word count for each pair of files listed in the WFD repository
+        - Divides work among one or more analysis threads, as indicated by the optional argument
+        - Each thread is given a portion of the file pairs and computes the JSD for each pair
+        - Once all comparisons have been made, the main thread will sort the list of comparisons in descending order
+            of combined word count and then print the results
+        
+        Data Structure:
+            - For each comparison we will need the names of the files being compared, the combined word count, and JSD
+            - If there are n files, there will be (1/2)n(n+1) comparisons
+            - Create an array of structs, have each thread write to non-overlapping portions of the array,
+                and finally sort the array using qsort()
+        
+        Division of Labor:
+            - give each thread a roughly-equal portion of the comparison set to compute
+                -> if there are 30 files and 5 threads, each thread will compute 93 of the 465 comparisons
+                -> handle casses where number of comparisons does not divide evenly
+            - Another method, keep track of which comparison needs to be computed next
+            and have each analysis thread take the next comparison needed
+                -> reduces possibilit that some threads finish early while other threads have significant amounts of work
+                to do
+            
+            Error Conditions:
+                - If collection phase found fewer than two files, report an error and exit
+                - Any numeric errors occurring in this phase indicate problems in collection phase
+                    -> can check these using assert()
 
 
     
