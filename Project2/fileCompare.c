@@ -39,11 +39,11 @@ int SetOptions(char *argv)
     return 0;
 }
 
-int CheckArgs(char **argv, int opt_arg_count)
+int CheckArgs(char **argv, int argc, int opt_arg_count)
 {
      // number of optional arguments inputed
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < argc; i++)
     {
         if (strncmp(argv[i], "-", sizeof(char)) == 0) // found an optional arg
         {
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    opt_arg_count = CheckArgs(argv, opt_arg_count); // Check for optional arguments, we will limit these to come before and typed once
+    opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments, we will limit these to come before and typed once
 
 	if(DEBUG)
 	{
