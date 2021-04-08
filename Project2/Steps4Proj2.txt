@@ -54,6 +54,7 @@ OPERATION:
                                             i               1                   0.2
                                             thieves         1                   0.2
                                             understand      1                   0.2
+
     - For each pair of files in this set, it will compute the JSD between the distributions for those files
     - frequency of a word is the number of times the word appears divided by the total number of words
     - word frequency distribution (WFD) for a file is a list of every word that occurs ATLEAST ONCE in the file
@@ -74,7 +75,7 @@ OPERATION:
      - linked list is a good balance of efficiency and simplcity
      - reccomended to choose a structure that allows for iteration through the words in alphabetical order
      - DO NOT assume maximum word length
-        -> word storage will be dynamically allocated (str buffer again? :D )
+        -> word storage will be dynamically allocated (str buffer again? :D ) 
     
     COMPUTING JENSEN-SHANNON DISTANCE (JSD)
         - bunch of math characters that I cant type here refer to pdf :)

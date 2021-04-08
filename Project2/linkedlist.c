@@ -3,6 +3,7 @@
 
 typedef struct {
     int value;
+    char *word;
     struct node_t* next;
     struct node_t* prev;
 }node_t;
