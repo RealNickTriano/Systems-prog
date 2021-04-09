@@ -17,37 +17,38 @@ node_t* initNode(char* w)
     return new;
 }
 
-void insert(node_t *root, char* w)
+node_t* insert(node_t *root, char* w)
 {
     node_t* pre = initNode(w);
     if(root == NULL){
         root = pre;
-        return;
+        return root;
     }
     pre->next = root;
     root = pre;
+    return root;
 }
 
-void add(node_t *root, char* w)
+node_t* add(node_t *root, char* w)
 {   
     node_t* new = initNode(w);
     if (root == NULL){
         root = new;
-        return;
+        return root;
     }
 
     if(strcmp(w, root->word) == 0){
         root->count++;
-        return;
+        return root;
     }
 
     if(strcmp(w, root->word) > 0){
-                add(root->next, w);
+            root->next = add(root->next, w);
     }
     if(strcmp(w, root->word) < 0){
-            insert(root, w);
+            return insert(root, w);
     }
-    return;
+    return root;
 }
 
 node_t* find(node_t *root, char* w){
@@ -85,14 +86,13 @@ void destroy(node_t* root){
 int main()
 {
     node_t *list;
-	list = initNode("hello");
-add(list, "can");
-add(list, "i");
-add(list, "have");
-add(list, "a");
-add(list, "drink");
-add(list, "can");
-add(list, "have");
-
+    list = initNode("hello");
+    list = add(list, "can");
+    list = add(list, "i");
+    list = add(list, "have");
+    list = add(list, "a");
+    list = add(list, "drink");
+    list = add(list, "can");
+    list =add(list, "have");
     print(list); 
 }
