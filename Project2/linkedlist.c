@@ -21,7 +21,7 @@ void insert(node_t *root, char* w)
 {
     node_t* pre = initNode(w);
     if(root == NULL){
-        root = new_node;
+        root = pre;
         return;
     }
     pre->next = root;
@@ -32,7 +32,7 @@ void add(node_t *root, char* w)
 {   
     node_t* new = initNode(w);
     if (root == NULL){
-        root = new_node;
+        root = new;
         return;
     }
 
@@ -42,7 +42,7 @@ void add(node_t *root, char* w)
     }
 
     if(strcmp(w, root->word) > 0){
-                root->next = add(root->next, w);
+                add(root->next, w);
     }
     if(strcmp(w, root->word) < 0){
             insert(root, w);
@@ -67,7 +67,7 @@ node_t* find(node_t *root, char* w){
 void print(node_t *root)
 {
     if (root != NULL){
-        printf("%s | %d", root->word, root->count)
+        printf("%s | %d\n", root->word, root->count);
         print(root->next);
     }
     return;
@@ -76,7 +76,7 @@ void print(node_t *root)
 void destroy(node_t* root){
     if (root != NULL){
                 if (root->next != NULL){
-                        freeAll(root->next);
+                        destroy(root->next);
                 }
                 free(root);
         }
@@ -84,9 +84,15 @@ void destroy(node_t* root){
 
 int main()
 {
-    for (int i = 0; i < 25; i++)
-    {
-        InsertAtTail(i);
-    }
-    PrintList(); 
+    node_t *list;
+	list = initNode("hello");
+add(list, "can");
+add(list, "i");
+add(list, "have");
+add(list, "a");
+add(list, "drink");
+add(list, "can");
+add(list, "have");
+
+    print(list); 
 }
