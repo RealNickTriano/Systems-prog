@@ -1,62 +1,85 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-typedef struct {
-    int value;
+typedef struct node_t{
     char *word;
+    int count;
     struct node_t* next;
-    struct node_t* prev;
 }node_t;
 
-node_t *head;
-
-node_t *InitNode(int value)
+node_t* initNode(char* w)
 {
-    node_t *result = malloc(sizeof(node_t));
-    result->value = value;
-    result->next = NULL;
-    result->prev = NULL;
-    return result;
+    node_t *new = (node_t*)malloc(sizeof(node_t));
+    new->word = w;
+    new->count = 0;
+    new->next = NULL;
+    return new;
 }
 
-void InsertNodeAtHead(int value)
+void insert(node_t *root, char* w)
 {
-    node_t* new_node = InitNode(value);
-    if(head == NULL)
-    {
-        head = new_node;
+    node_t* pre = initNode(w);
+    if(root == NULL){
+        root = new_node;
         return;
     }
-    head->prev = new_node;
-    new_node->next = head;
-    head = new_node;
+    pre->next = root;
+    root = pre;
 }
 
-void InsertAtTail(int value)
-{
-    node_t* temp = head; // creat tempory node to start at head
-    node_t* new_node = InitNode(value);
-    if(head == NULL)
-    {
-        head = new_node;
+void add(node_t *root, char* w)
+{   
+    node_t* new = initNode(w);
+    if (root == NULL){
+        root = new_node;
         return;
     }
-    while(temp->next != NULL) //traverse list to last node
-    {
-        temp = temp->next;  
-        temp->next = new_node;
-        new_node-> prev = temp;
+
+    if(strcmp(w, root->word) == 0){
+        root->count++;
+        return;
+    }
+
+    if(strcmp(w, root->word) > 0){
+                root->next = add(root->next, w);
+    }
+    if(strcmp(w, root->word) < 0){
+            insert(root, w);
+    }
+    return;
+}
+
+node_t* find(node_t *root, char* w){
+    if (root == NULL){
+        return NULL;
+    }
+
+    if(strcmp(w, root->word) == 0)
+        return root;
+    else{
+        if (root->next == NULL)
+            return NULL;
+        find(root->next, w);
     }
 }
 
-void PrintList()
+void print(node_t *root)
 {
-    node_t* temp = head;
-    while(temp->next != NULL)
-    {
-        printf("%d | ", temp->value);
-        temp = temp->next;
+    if (root != NULL){
+        printf("%s | %d", root->word, root->count)
+        print(root->next);
     }
+    return;
+}
+
+void destroy(node_t* root){
+    if (root != NULL){
+                if (root->next != NULL){
+                        freeAll(root->next);
+                }
+                free(root);
+        }
 }
 
 int main()
@@ -65,7 +88,5 @@ int main()
     {
         InsertAtTail(i);
     }
-    PrintList();
-    
-    
+    PrintList(); 
 }
