@@ -10,11 +10,11 @@ typedef struct node_t{
 
 node_t* initNode(char* w)
 {
-    node_t *new = (node_t*)malloc(sizeof(node_t));
-    new->word = w;
-    new->count = 0;
-    new->next = NULL;
-    return new;
+    node_t *new_node = (node_t*)malloc(sizeof(node_t));
+    new_node->word = w;
+    new_node->count = 1;
+    new_node->next = NULL;
+    return new_node;
 }
 
 node_t* insert(node_t *root, char* w)
@@ -31,9 +31,9 @@ node_t* insert(node_t *root, char* w)
 
 node_t* add(node_t *root, char* w)
 {   
-    node_t* new = initNode(w);
+    node_t* new_node = initNode(w);
     if (root == NULL){
-        root = new;
+        root = new_node;
         return root;
     }
 
@@ -74,25 +74,12 @@ void print(node_t *root)
     return;
 }
 
-void destroy(node_t* root){
+void destroyList(node_t* root){
     if (root != NULL){
                 if (root->next != NULL){
-                        destroy(root->next);
+                        destroyList(root->next);
                 }
                 free(root);
         }
 }
 
-int main()
-{
-    node_t *list;
-    list = initNode("hello");
-    list = add(list, "can");
-    list = add(list, "i");
-    list = add(list, "have");
-    list = add(list, "a");
-    list = add(list, "drink");
-    list = add(list, "can");
-    list =add(list, "have");
-    print(list); 
-}

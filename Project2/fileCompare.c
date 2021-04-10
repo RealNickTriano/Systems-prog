@@ -10,9 +10,15 @@
 #include <signal.h>
 #include <pthread.h>
 #include "Queue.h"
+#include "linkedlist.h"
+
 
 #ifndef DEBUG
 #define DEBUG 0
+#endif
+
+#ifndef BUFSIZE
+#define BUFSIZE 128
 #endif
 
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
@@ -33,19 +39,84 @@ int is_file(const char *path) //!=0 if file is regular file
         return S_ISREG(statbuf.st_mode);
 }
 
-/*int FindWFD(const char *path)
+int FindWFD(const char *path)
 {
-    int bytes_read, input_fd;
-    char buf[100];
+    int bytes_read, input_fd, words_found = 0;
+    char buf[BUFSIZE];
+    char character, adjacent_character;
+    int found_end = 0;       //A boolean to check if we found the end of a word
+    int word_len;
+    int word_start = 0; //The start position of a word
+    int word_end = 0;   //The end position of a word
+    char *word;
+    node_t *list;
 
     input_fd = open(path, O_RDONLY);
-    while ((bytes_read = read(input_fd, buf, 100)) > 0) //reading file
+    while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
     {
         // convert letters to all lowercase
-        for (i = 0; i < bytes_read; i++) 
+        for (int i = 0; i < bytes_read; i++) 
         {
 	        buf[i] = tolower(buf[i]);
 	    }
+
+        for (int i = 0; i < bytes_read; i++)
+        {
+		character = buf[i];
+                adjacent_character = buf[i + 1];
+
+            if (isspace(character) != 0 && isspace(adjacent_character) == 0)
+            {
+                word_start = i + 1; //Starting index of word is set to the first LETTER
+            }
+            else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
+            {
+                word_end = i;  //Ending index of word is set to the last LETTER
+                found_end = 1; //Sets boolean to true for finding the end of a word
+                words_found++;
+            }
+
+            if(found_end == 1)
+            {
+                found_end = 0; // reset found_end 
+
+                if(ispunct(buf[word_end]) != 0)
+                {
+                    // word ends with punctuation
+                    // so get rid of that from the word
+                    word_end--;
+                }
+                word_len = word_end - word_start + 1; // Calculate word length
+
+                word = malloc(sizeof(char) * word_len);
+                memcpy(word, &buf[word_start], sizeof(char) * word_len);
+
+               /* if(DEBUG)
+                {
+                    printf("%s\n", word);
+                }*/
+                // now we can add the word to linked list
+                if(words_found == 1)
+                {
+                    list = initNode(word);
+                }   
+                else
+                {
+                    list = add(list, word);
+                } 
+
+                
+                
+                
+
+            }
+        }
+		if(DEBUG)
+                {
+                    print(list);
+                }
+		
+        
         // Find words in read
         // Once you find a word check if its already in the list
         // if not Add word to linked list
@@ -54,7 +125,7 @@ int is_file(const char *path) //!=0 if file is regular file
 
         
     }
-}*/
+}
 int SetOptions(char *argv)  // sets number of threads/ file name suffix
 {
     if(strncmp(argv, "-d", sizeof(char) * 2) == 0)
@@ -141,6 +212,7 @@ int main(int argc, char **argv)
         }
         else if (is_file(argv[i]) != 0) // found a file
         {
+            FindWFD(argv[i]);
             // add to file queue
             enqueue(&file_q, argv[i]);
             //start file threads
