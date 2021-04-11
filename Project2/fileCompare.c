@@ -12,7 +12,6 @@
 #include "Queue.h"
 #include "linkedlist.h"
 
-
 #ifndef DEBUG
 #define DEBUG 0
 #endif
@@ -24,8 +23,14 @@
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
 char file_name_suffix[] = ".txt";
 
+typedef struct wfd_array
+{
+    node_t *root;
+    char *path_name;
 
-int is_directory(const char *path)// !=0 if file is directory
+} wfd_array;
+
+int is_directory(const char *path) // !=0 if file is directory
 {
     struct stat statbuf;
     stat(path, &statbuf);
@@ -34,17 +39,19 @@ int is_directory(const char *path)// !=0 if file is directory
 
 int is_file(const char *path) //!=0 if file is regular file
 {
-        struct stat statbuf;
-        stat(path, &statbuf);
-        return S_ISREG(statbuf.st_mode);
+    struct stat statbuf;
+    stat(path, &statbuf);
+    return S_ISREG(statbuf.st_mode);
 }
 
 int FindWFD(const char *path)
 {
-    int bytes_read, input_fd, words_found = 0;
+    int bytes_read, input_fd;
+    float words_found = 0;
+    float wfd = 0.0;
     char buf[BUFSIZE];
     char character, adjacent_character;
-    int found_end = 0;       //A boolean to check if we found the end of a word
+    int found_end = 0; //A boolean to check if we found the end of a word
     int word_len;
     int word_start = 0; //The start position of a word
     int word_end = 0;   //The end position of a word
@@ -55,15 +62,15 @@ int FindWFD(const char *path)
     while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
     {
         // convert letters to all lowercase
-        for (int i = 0; i < bytes_read; i++) 
+        for (int i = 0; i < bytes_read; i++)
         {
-	        buf[i] = tolower(buf[i]);
-	    }
+            buf[i] = tolower(buf[i]);
+        }
 
         for (int i = 0; i < bytes_read; i++)
         {
-		character = buf[i];
-                adjacent_character = buf[i + 1];
+            character = buf[i];
+            adjacent_character = buf[i + 1];
 
             if (isspace(character) != 0 && isspace(adjacent_character) == 0)
             {
@@ -76,11 +83,11 @@ int FindWFD(const char *path)
                 words_found++;
             }
 
-            if(found_end == 1)
+            if (found_end == 1)
             {
-                found_end = 0; // reset found_end 
+                found_end = 0; // reset found_end
 
-                if(ispunct(buf[word_end]) != 0)
+                if (ispunct(buf[word_end]) != 0)
                 {
                     // word ends with punctuation
                     // so get rid of that from the word
@@ -91,46 +98,46 @@ int FindWFD(const char *path)
                 word = malloc(sizeof(char) * word_len);
                 memcpy(word, &buf[word_start], sizeof(char) * word_len);
 
-               /* if(DEBUG)
+                /* if(DEBUG)
                 {
                     printf("%s\n", word);
                 }*/
                 // now we can add the word to linked list
-                if(words_found == 1)
+                if (words_found == 1)
                 {
                     list = initNode(word);
-                }   
+                }
                 else
                 {
                     list = add(list, word);
-                } 
-
-                
-                
-                
-
+                }
             }
         }
-		if(DEBUG)
-                {
-                    print(list);
-                }
-		
-        
-        // Find words in read
-        // Once you find a word check if its already in the list
-        // if not Add word to linked list
-        // if already in list increment its respective int +1
-        // in the other list of ints
+    }
+    // done reading file
+    if (DEBUG)
+    {
+        print(list);
+    }
 
-        
+    // now calculate WFD of file
+    while (list != NULL)
+    {
+        wfd = (list->count / words_found);
+        if (DEBUG)
+        {
+            printf("%.2lf ", wfd);
+        }
+
+        list->frequency = wfd;
+        list = list->next;
     }
 }
-int SetOptions(char *argv)  // sets number of threads/ file name suffix
+int SetOptions(char *argv) // sets number of threads/ file name suffix
 {
-    if(strncmp(argv, "-d", sizeof(char) * 2) == 0)
-    {   
-        if(atoi(&argv[2]) <=0 )
+    if (strncmp(argv, "-d", sizeof(char) * 2) == 0)
+    {
+        if (atoi(&argv[2]) <= 0)
         {
             fprintf(stderr, "Invalid number of threads: %s\n", argv);
             exit(EXIT_FAILURE);
@@ -138,25 +145,27 @@ int SetOptions(char *argv)  // sets number of threads/ file name suffix
         else
             directory_threads = atoi(&argv[2]);
     }
-    else if(strncmp(argv, "-f", sizeof(char) * 2) == 0)
+    else if (strncmp(argv, "-f", sizeof(char) * 2) == 0)
     {
-        if(atoi(&argv[2]) <=0 ){
+        if (atoi(&argv[2]) <= 0)
+        {
             fprintf(stderr, "Invalid number of threads: %s\n", argv);
             exit(EXIT_FAILURE);
         }
         else
-        file_threads = atoi(&argv[2]);
+            file_threads = atoi(&argv[2]);
     }
-    else if(strncmp(argv, "-a", sizeof(char) * 2) == 0)
+    else if (strncmp(argv, "-a", sizeof(char) * 2) == 0)
     {
-        if(atoi(&argv[2]) <=0 ){
+        if (atoi(&argv[2]) <= 0)
+        {
             fprintf(stderr, "Invalid number of threads: %s\n", argv);
             exit(EXIT_FAILURE);
         }
         else
-        analysis_threads = atoi(&argv[2]);
+            analysis_threads = atoi(&argv[2]);
     }
-    else if(strncmp(argv, "-s", sizeof(char) * 2) == 0)
+    else if (strncmp(argv, "-s", sizeof(char) * 2) == 0)
     {
         // set new file name suffix
     }
@@ -170,7 +179,7 @@ int SetOptions(char *argv)  // sets number of threads/ file name suffix
 
 int CheckArgs(char **argv, int argc, int opt_arg_count) // Checks arguments seperates optional/regular
 {
-     // number of optional arguments inputed
+    // number of optional arguments inputed
 
     for (int i = 1; i < argc; i++)
     {
@@ -182,20 +191,19 @@ int CheckArgs(char **argv, int argc, int opt_arg_count) // Checks arguments sepe
     }
 
     return opt_arg_count;
-    
 }
 int main(int argc, char **argv)
 {
     int opt_arg_count = 0;
     struct targs *args;
-	pthread_t *tids;
-    
+    pthread_t *tids;
+
     if (argc < 3) //not enough arguments
     {
         return EXIT_FAILURE;
     }
 
-    queue_t file_q;     // Create and initialize file/directory queues
+    queue_t file_q; // Create and initialize file/directory queues
     init(&file_q);
     queue_t directory_q;
     init(&directory_q);
@@ -217,19 +225,21 @@ int main(int argc, char **argv)
             enqueue(&file_q, argv[i]);
             //start file threads
         }
-        else{}
+        else
+        {
+        }
     }
-    if(DEBUG)
+    if (DEBUG)
     {
-	printf("File Queue...\n");
+        printf("File Queue...\n");
         printQueue(&file_q);
-	printf("Directory Queue...\n");
-	printQueue(&directory_q);
+        printf("Directory Queue...\n");
+        printQueue(&directory_q);
     }
-    
-	if(DEBUG)
-	{
-		printf("dir threads: %d\nfile threads: %d\nanalysis threads: %d\noptional arguments: %d\n",directory_threads, file_threads, analysis_threads, opt_arg_count);
-	}
+
+    if (DEBUG)
+    {
+        printf("dir threads: %d\nfile threads: %d\nanalysis threads: %d\noptional arguments: %d\n", directory_threads, file_threads, analysis_threads, opt_arg_count);
+    }
     return EXIT_SUCCESS;
 }
