@@ -210,25 +210,35 @@ int main(int argc, char **argv)
 
     opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments
 
+    // start threads here:
     for (int i = 1; i < argc; i++)
     {
         if (is_directory(argv[i]) != 0) // found a directory
         {
             // add to directory queue
             enqueue(&directory_q, argv[i]);
-            //start directory threads
         }
         else if (is_file(argv[i]) != 0) // found a file
         {
-            FindWFD(argv[i]);
             // add to file queue
             enqueue(&file_q, argv[i]);
-            //start file threads
         }
         else
         {
         }
     }
+
+    while(file_q->count != 0)
+    {
+        char *path;
+        path = dequeue(&file_q, path);
+        if (path == NULL)
+        {
+            return 0;
+        }
+        FindWFD(path);
+    }
+    
     if (DEBUG)
     {
         printf("File Queue...\n");
