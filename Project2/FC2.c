@@ -9,9 +9,8 @@
 #include <dirent.h>
 #include <signal.h>
 #include <pthread.h>
-#include "fileQueue.h"
+#include "Queue.h"
 #include "linkedlist.h"
-#include "wfdlinkedlist.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -23,8 +22,16 @@
 
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
 char file_name_suffix[] = ".txt";
-int files = 0;
-node_wfd_t *wfd_repo;
+char *overflow_buffer;
+int overflow = 0;
+int overflow_chars = 0;
+
+typedef struct wfd_array
+{
+    node_t *root;
+    char *path_name;
+
+} wfd_array;
 
 int is_directory(const char *path) // !=0 if file is directory
 {
@@ -40,7 +47,7 @@ int is_file(const char *path) //!=0 if file is regular file
     return S_ISREG(statbuf.st_mode);
 }
 
-int FindWFD(char *path)
+int FindWFD(const char *path)
 {
     int bytes_read, input_fd;
     float words_found = 0;
@@ -54,7 +61,6 @@ int FindWFD(char *path)
     char *word;
     node_t *list;
 
-    files++;
     input_fd = open(path, O_RDONLY);
     while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
     {
@@ -64,7 +70,7 @@ int FindWFD(char *path)
             buf[i] = tolower(buf[i]);
         }
 
-        for (int i = 0; i < bytes_read; i++)
+        for (int i = 0; i < BUFSIZE; i++)
         {
             character = buf[i];
             adjacent_character = buf[i + 1];
@@ -79,6 +85,31 @@ int FindWFD(char *path)
                 found_end = 1; //Sets boolean to true for finding the end of a word
                 words_found++;
             }
+            else // middle of word
+            {
+                if(i == BUFSIZE -1) // end of buffer
+                {
+                    int size = i - word_start + 1;
+                    if(overflow == 1)// if we still havent found end of the word after a second buffer we have to realloc
+                    {
+                        char *other_buffer;                         // create an extra buffer to add to overflow
+                        other_buffer = malloc(sizeof(char) * size);
+                        memcpy(other_buffer, &buf[word_start], sizeof(char) * size);
+
+                        overflow_buffer = realloc(sizeof(char) * (size + overflow_chars)); // realloc to hold more space
+                        strcat(overflow_buffer, other_buffer);  // concate the two together
+                        free(other_buffer); //free it!
+                    }
+                    else // first encounter of overflowing buffer
+                    {
+                        overflow_buffer = malloc(sizeof(char) * size);
+                        memcpy(overflow_buffer, &buf[word_start], sizeof(char) * size);
+                        overflow = 1;
+                        overflow_chars = size;
+                    }
+                    
+                }
+            }
 
             if (found_end == 1)
             {
@@ -90,10 +121,23 @@ int FindWFD(char *path)
                     // so get rid of that from the word
                     word_end--;
                 }
-                word_len = word_end - word_start + 1; // Calculate word length
 
-                word = malloc(sizeof(char) * word_len);
-                memcpy(word, &buf[word_start], sizeof(char) * word_len);
+                if(overflow == 1)
+                {
+                    word_len = overflow_chars + word_end;
+                    word = malloc(sizeof(char) * word_len);
+                    memcpy(word, overflow_buffer, sizeof(char) * overflow_chars); // word start should be 0 in this case
+                    strcat(word, overflow_buffer); // combine words
+                    overflow = 0;
+                    free(overflow_buffer);
+                }
+                else
+                {
+                    word_len = word_end - word_start + 1; // Calculate word length
+
+                    word = malloc(sizeof(char) * word_len);
+                    memcpy(word, &buf[word_start], sizeof(char) * word_len);
+                }
 
                 /* if(DEBUG)
                 {
@@ -109,12 +153,14 @@ int FindWFD(char *path)
                     list = add(list, word);
                 }
             }
+            free(word);
+            
         }
     }
     // done reading file
     if (DEBUG)
     {
-        printList(list);
+        print(list);
     }
 
     // now calculate WFD of file
@@ -129,16 +175,6 @@ int FindWFD(char *path)
         list->frequency = wfd;
         list = list->next;
     }
-
-    // add to WFD repo
-   /* if(files == 1) // if its the first file
-    {
-        wfd_repo = initNode2(path);
-    }
-    else 
-    {
-    wfd_repo = add2(wfd_repo, path, list);
-    }*/
 }
 int SetOptions(char *argv) // sets number of threads/ file name suffix
 {
@@ -175,8 +211,6 @@ int SetOptions(char *argv) // sets number of threads/ file name suffix
     else if (strncmp(argv, "-s", sizeof(char) * 2) == 0)
     {
         // set new file name suffix
-        int len = strlen(argv) - 2;
-        strncpy(file_name_suffix, argv + 2, len);
     }
     else
     {
@@ -219,35 +253,25 @@ int main(int argc, char **argv)
 
     opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments
 
-    // start threads here:
     for (int i = 1; i < argc; i++)
     {
         if (is_directory(argv[i]) != 0) // found a directory
         {
             // add to directory queue
             enqueue(&directory_q, argv[i]);
+            //start directory threads
         }
         else if (is_file(argv[i]) != 0) // found a file
         {
+            FindWFD(argv[i]);
             // add to file queue
             enqueue(&file_q, argv[i]);
+            //start file threads
         }
         else
         {
         }
     }
-
-    while(file_q.count != 0)
-    {
-        char *path;
-        path = dequeue(&file_q, path);
-        if (path == NULL)
-        {
-            return 0;
-        }
-        FindWFD(path);
-    }
-    
     if (DEBUG)
     {
         printf("File Queue...\n");
