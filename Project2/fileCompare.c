@@ -9,9 +9,10 @@
 #include <dirent.h>
 #include <signal.h>
 #include <pthread.h>
+#include "strbuf.h"
 #include "fileQueue.h"
 #include "linkedlist.h"
-#include "wfdlinkedlist.h"
+//#include "wfdlinkedlist.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -24,7 +25,7 @@
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
 char file_name_suffix[] = ".txt";
 int files = 0;
-node_wfd_t *wfd_repo;
+//node_wfd_t *wfd_repo;
 
 int is_directory(const char *path) // !=0 if file is directory
 {
@@ -46,13 +47,16 @@ int FindWFD(char *path)
     float words_found = 0;
     float wfd = 0.0;
     char buf[BUFSIZE];
-    char character, adjacent_character;
+    char character; 
+    //char adjacent_character;
     int found_end = 0; //A boolean to check if we found the end of a word
-    int word_len;
+    int word_len = 0;
     int word_start = 0; //The start position of a word
-    int word_end = 0;   //The end position of a word
+    //int word_end = 0;   //The end position of a word
     char *word;
     node_t *list;
+    strbuf_t str;
+    sb_init(&str, BUFSIZE);
 
     files++;
     input_fd = open(path, O_RDONLY);
@@ -67,33 +71,35 @@ int FindWFD(char *path)
         for (int i = 0; i < bytes_read; i++)
         {
             character = buf[i];
-            adjacent_character = buf[i + 1];
 
-            if (isspace(character) != 0 && isspace(adjacent_character) == 0)
+            if (isalpha(character) != 0 || isdigit(character) != 0 || character == '-')
             {
-                word_start = i + 1; //Starting index of word is set to the first LETTER
+                word_start = 1;
+                sb_append(&str, character);
+                word_len++;
             }
-            else if (isspace(character) == 0 && isspace(adjacent_character) != 0)
+            else if (isspace(character) != 0)
             {
-                word_end = i;  //Ending index of word is set to the last LETTER
-                found_end = 1; //Sets boolean to true for finding the end of a word
+                if (word_start == 1)
+                {
+                    found_end = 1;
+                    word_start = 0;
+                }
                 words_found++;
             }
 
             if (found_end == 1)
             {
                 found_end = 0; // reset found_end
-
-                if (ispunct(buf[word_end]) != 0)
-                {
-                    // word ends with punctuation
-                    // so get rid of that from the word
-                    word_end--;
-                }
-                word_len = word_end - word_start + 1; // Calculate word length
-
                 word = malloc(sizeof(char) * word_len);
-                memcpy(word, &buf[word_start], sizeof(char) * word_len);
+		if(word == NULL)
+		{
+			perror("malloc: ");
+		}
+                //strncpy(word, &sb_word(str, word_len), word_len);
+		sb_word(&str, word_len, word);
+                sb_destroy(&str);
+                sb_init(&str, BUFSIZE);
 
                 /* if(DEBUG)
                 {
@@ -108,15 +114,16 @@ int FindWFD(char *path)
                 {
                     list = add(list, word);
                 }
+		
             }
-        }
+        }sb_destroy(&str);
     }
     // done reading file
     if (DEBUG)
     {
         printList(list);
     }
-
+	
     // now calculate WFD of file
     while (list != NULL)
     {
@@ -129,7 +136,7 @@ int FindWFD(char *path)
         list->frequency = wfd;
         list = list->next;
     }
-
+destroyList(list);
     // add to WFD repo
    /* if(files == 1) // if its the first file
     {
@@ -248,6 +255,7 @@ int main(int argc, char **argv)
         FindWFD(path);
     }
     
+		
     if (DEBUG)
     {
         printf("File Queue...\n");
