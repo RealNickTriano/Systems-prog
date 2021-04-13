@@ -12,7 +12,7 @@
 #include "strbuf.h"
 #include "fileQueue.h"
 #include "linkedlist.h"
-//#include "wfdlinkedlist.h"
+
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -25,7 +25,7 @@
 int directory_threads = 1, file_threads = 1, analysis_threads = 1;
 char file_name_suffix[] = ".txt";
 int files = 0;
-//node_wfd_t *wfd_repo;
+wfd_t *wfd_repo;
 
 int is_directory(const char *path) // !=0 if file is directory
 {
@@ -125,27 +125,26 @@ int FindWFD(char *path)
     }
 	
     // now calculate WFD of file
-    while (list != NULL)
+    node_t *temp = list;
+    while (temp != NULL)
     {
-        wfd = (list->count / words_found);
-        if (DEBUG)
-        {
-            printf("%.2lf ", wfd);
-        }
-
-        list->frequency = wfd;
-        list = list->next;
+        wfd = (temp->count / words_found);
+        temp->frequency = wfd;
+        temp = temp->next;
     }
-destroyList(list);
+    free(temp);
+    //destroyList(list);
     // add to WFD repo
-   /* if(files == 1) // if its the first file
+    if(files == 1) // if its the first file
     {
-        wfd_repo = initNode2(path);
+        wfd_repo = initNodeWFD(path, list, words_found);
     }
     else 
     {
-    wfd_repo = add2(wfd_repo, path, list);
-    }*/
+        wfd_repo = addNodeWFD(wfd_repo, path, list, words_found);
+    }
+	
+    
 }
 int SetOptions(char *argv) // sets number of threads/ file name suffix
 {
@@ -254,6 +253,12 @@ int main(int argc, char **argv)
         }
         FindWFD(path);
     }
+
+	if(DEBUG)
+	{
+		printf("printing repo...\n\n");
+		printListWFD(wfd_repo);
+	}
     
 		
     if (DEBUG)
