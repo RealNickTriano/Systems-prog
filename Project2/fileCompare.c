@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <signal.h>
 #include <pthread.h>
+#include <math.h>
 #include "strbuf.h"
 #include "fileQueue.h"
 #include "linkedlist.h"
@@ -207,6 +208,107 @@ int CheckArgs(char **argv, int argc, int opt_arg_count) // Checks arguments sepe
 
     return opt_arg_count;
 }
+
+int inList(node_t *list1, node_t *list2) // check if word in list 1 is in list 2 RETURNS 1 if item is in list 2 and 0 if not
+{
+    node_t *temp;
+    temp = list2;
+
+    while(list1 != NULL)
+    {
+        while(temp != NULL) //look through file 2 word list to see if word from file 1 is in file 2
+        {
+            if(strcmp(list1->word, temp->word) == 0) // word is in list 2
+            {
+                return 1;
+            }
+            else
+            {
+                temp = temp->next;
+            }
+        }
+    }
+	free (temp);
+    return 0;
+}
+node_t* computeKLD(node_t *file1, node_t *file2, node_t *mean_file)
+{
+    int one_freq = 0;
+    double mean_frequency, freq1, freq2;
+    node_t *temp;
+    temp = file2;
+
+    while(file1 != NULL)
+    {
+        if(mean_file == NULL || inList(file1, mean_file) == 1) // if we already checked the word go next
+        {
+            file1 = file1->next;
+        }
+        else
+        {
+            freq1 = file1->frequency;
+
+            while(temp != NULL) //look through file 2 word list to see if word from file 1 is in file 2
+            {
+                if(strcmp(file1->word, temp->word) == 0) // word is in file 2 as well
+                {
+                    freq2 = temp->frequency;
+                    break;
+                }
+                else
+                {
+                    temp = temp->next;
+                    freq2 = 0;  // freq2 will be 0 if word is never found in file 2
+                }
+            }
+
+            one_freq = 1;
+
+            //calculate mean frequency
+            // add to linked list
+            if(one_freq == 1)
+            {
+                mean_file  = initNode(file1->word);
+            }
+            else
+            {
+                mean_file = add(mean_file, file1->word);
+            }
+
+            mean_file->mean_frequency = (1/2) * (freq1 + freq2); // set mean freq of word
+            file1 = file1->next; // go to next word and repeat proccess
+        }
+    }
+free(temp);
+    return mean_file;
+}
+void computeJSD()
+{
+    
+    char *file_pair_name;
+    node_t *file1, *file2;
+    node_t *mean_file = NULL;
+
+    
+    // compute KLD for each file
+    file1 = wfd_repo->list; 
+    file2 = (wfd_repo->next)->list;
+
+    mean_file = computeKLD(file1, file2, mean_file);
+    mean_file =computeKLD(file2, file1, mean_file);
+
+	printf("MEAN FILE...\n");
+    printList(mean_file);
+
+//free(file1);
+//free(file2);
+free(mean_file);
+    
+
+    
+    // compute JSD for each file pair
+	return;
+}
 int main(int argc, char **argv)
 {
     int opt_arg_count = 0;
@@ -253,6 +355,8 @@ int main(int argc, char **argv)
         }
         FindWFD(path);
     }
+	computeJSD();
+	
 
 	if(DEBUG)
 	{
