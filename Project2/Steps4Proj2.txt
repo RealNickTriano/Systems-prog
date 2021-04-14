@@ -156,7 +156,7 @@ PROGRAM ORGANIZATION:
         
         Data Structure:
             - For each comparison we will need the names of the files being compared, the combined word count, and JSD
-            - If there are n files, there will be (1/2)n(n+1) comparisons
+            - If there are n files, there will be (1/2)n(n-1) comparisons
             - Create an array of structs, have each thread write to non-overlapping portions of the array,
                 and finally sort the array using qsort()
         
