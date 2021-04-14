@@ -6,7 +6,6 @@ typedef struct node_t{
     char *word;
     float count;
     double frequency;
-	double mean_frequency;
     struct node_t* next;
 }node_t;
 
@@ -16,7 +15,6 @@ node_t* initNode(char* w)
     new_node->word = w;
     new_node->count = 1;
     new_node->frequency = 0.0;
-    new_node->mean_frequency = 0.0;
     new_node->next = NULL;
     return new_node;
 }
@@ -72,7 +70,7 @@ node_t* find(node_t *root, char* w){
 void printList(node_t *root)
 {
     if (root != NULL){
-        printf("%s | %.1f | %.2f | %f\n", root->word, root->count, root->frequency, root->mean_frequency);
+        printf("%s | %.1f | %.2f\n", root->word, root->count, root->frequency);
         printList(root->next);
     }
     return;
@@ -90,7 +88,6 @@ void destroyList(node_t* root){
 typedef struct wfd_t {
     char *path;
     int word_count;
-    double kld;
     struct node_t *list;
     struct wfd_t *next;
 }wfd_t;
@@ -100,7 +97,6 @@ wfd_t* initNodeWFD(char *path, node_t *node, int words_found)
     wfd_t *wfd_node = (wfd_t*)malloc(sizeof(wfd_t));
     wfd_node->path = path;
     wfd_node->list = node;
-    wfd_node->kld = 0;
     wfd_node->word_count = words_found;
     wfd_node->next = NULL;
 
@@ -128,7 +124,7 @@ void printListWFD(wfd_t *root)
 {
     if(root!= NULL)
     {
-        printf("file name: %s\nword count: %d\nKLD: %f\n\n", root->path, root->word_count, root->kld);
+        printf("file name: %s\nword count: %d\n\n", root->path, root->word_count);
         printList(root->list);
 	printListWFD(root->next);
     }
