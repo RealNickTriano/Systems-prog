@@ -101,10 +101,10 @@ char *dequeue(queue_t *Q, char *item)
 	++Q->head;
 	if (Q->head == QSIZE)
 		Q->head = 0;
-	for (int i = Q->count; i > 0; i--)
+	/*for (int i = Q->count; i > 0; i--)
 	{
 		Q->data[i - 1] = Q->data[i];
-	}
+	}*/
 	pthread_cond_signal(&Q->write_ready);
 
 	pthread_mutex_unlock(&Q->lock);

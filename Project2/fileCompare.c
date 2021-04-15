@@ -14,7 +14,6 @@
 #include "fileQueue.h"
 #include "linkedlist.h"
 
-
 #ifndef DEBUG
 #define DEBUG 0
 #endif
@@ -43,13 +42,18 @@ int is_file(const char *path) //!=0 if file is regular file
     return S_ISREG(statbuf.st_mode);
 }
 
+struct targs
+{
+    queue_t *Q;
+};
+
 void *FindWFD(void *A)
 {
     int bytes_read, input_fd;
     float words_found = 0;
     float wfd = 0.0;
     char buf[BUFSIZE];
-    char character; 
+    char character;
     //char adjacent_character;
     int found_end = 0; //A boolean to check if we found the end of a word
     int word_len = 0;
@@ -59,14 +63,16 @@ void *FindWFD(void *A)
     char *path;
     node_t *list;
     strbuf_t str;
-    queue_t *file_q = A;
-
-    while(file_q->count != 0)
+    struct targs *args = A;
+    //queue_t *file_q = args->Q;
+    sleep(1);
+    while ((args->Q)->count != 0)
     {
+
         pthread_mutex_lock(&lock);
-        path = dequeue(file_q, path);
+        path = dequeue(args->Q, path);
         sb_init(&str, BUFSIZE);
-        
+
         files++;
         input_fd = open(path, O_RDONLY);
         while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
@@ -83,10 +89,13 @@ void *FindWFD(void *A)
 
                 if (isalpha(character) != 0 || isdigit(character) != 0 || character == '-')
                 {
-		if(DEBUG)
-			printf("appending %d", character);
-
-                    word_start = 1;
+                    if (DEBUG)
+                        //printf("appending %d", character);
+                        if (word_start == 0)
+                        {
+                            sb_init(&str, BUFSIZE);
+                            word_start = 1;
+                        }
                     sb_append(&str, character);
                     word_len++;
                 }
@@ -104,14 +113,14 @@ void *FindWFD(void *A)
                 {
                     found_end = 0; // reset found_end
                     word = malloc(sizeof(char) * word_len);
-            if(word == NULL)
-            {
-                perror("malloc: ");
-            }
+                    if (word == NULL)
+                    {
+                        perror("malloc: ");
+                    }
                     //strncpy(word, &sb_word(str, word_len), word_len);
-            sb_word(&str, word_len, word);
+                    sb_word(&str, word_len, word);
                     sb_destroy(&str);
-                    sb_init(&str, BUFSIZE);
+                    // sb_init(&str, BUFSIZE);
 
                     /* if(DEBUG)
                     {
@@ -126,16 +135,15 @@ void *FindWFD(void *A)
                     {
                         list = add(list, word);
                     }
-            
                 }
-            }sb_destroy(&str);
+            } //sb_destroy(&str);
         }
         // done reading file
-       /* if (DEBUG)
+        /* if (DEBUG)
         {
             printList(list);
         }*/
-        
+
         // now calculate WFD of file
         node_t *temp = list;
         while (temp != NULL)
@@ -147,23 +155,23 @@ void *FindWFD(void *A)
         free(temp);
         //destroyList(list);
         // add to WFD repo
-        if(files == 1) // if its the first file
+        if (files == 1) // if its the first file
         {
             wfd_repo = initNodeWFD(path, list, words_found);
         }
-        else 
+        else
         {
             wfd_repo = addNodeWFD(wfd_repo, path, list, words_found);
         }
         pthread_mutex_unlock(&lock);
     }
 
-	if (DEBUG)
+    if (DEBUG)
     {
         printf("File Queue...\n");
-        printQueue(file_q);
+        printQueue(args->Q);
     }
-	
+
     return NULL;
 }
 int SetOptions(char *argv) // sets number of threads/ file name suffix
@@ -329,17 +337,12 @@ free(mean_file);
 	return;
 }*/
 
-struct targs {
-	queue_t *Q;
-};
-
 int main(int argc, char **argv)
 {
     int opt_arg_count = 0;
     int err;
     struct targs *args;
-	pthread_t *tids;
-    
+    pthread_t *tids;
 
     if (argc < 3) //not enough arguments
     {
@@ -354,22 +357,20 @@ int main(int argc, char **argv)
     opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments
 
     args = malloc(file_threads * sizeof(struct targs));
-	tids = malloc(file_threads * sizeof(pthread_t));
+    tids = malloc(file_threads * sizeof(pthread_t));
     pthread_mutex_init(&lock, NULL);
 
     // start threads here:
-    for(int i = 0; i < file_threads; i++)
+    for (int i = 0; i < file_threads; i++)
     {
         args[i].Q = &file_q;
         err = pthread_create(&tids[i], NULL, FindWFD, &args[i]);
-        if(err !=0)
+        if (err != 0)
         {
             perror("creation failed");
             return EXIT_FAILURE;
         }
-            
     }
-    
 
     for (int i = 1; i < argc; i++) // search through initial arguments for files/directorys
     {
@@ -388,28 +389,24 @@ int main(int argc, char **argv)
         }
     }
 
-    for(int i = 0; i < file_threads; i++)
+    for (int i = 0; i < file_threads; i++)
     {
         pthread_join(tids[i], NULL);
     }
 
-pthread_mutex_destroy(&lock);
-destroy(&file_q);
-free(tids);
-free(args);
+    pthread_mutex_destroy(&lock);
+    destroy(&file_q);
+    free(tids);
+    free(args);
 
-    
-	//computeJSD();
-	//FindWFD(file_q);
+    //computeJSD();
+    //FindWFD(file_q);
 
-	if(DEBUG)
-	{
-		printf("printing repo...\n\n");
-		printListWFD(wfd_repo);
-	}
-    
-		
-    
+    if (DEBUG)
+    {
+        printf("printing repo...\n\n");
+        printListWFD(wfd_repo);
+    }
 
     if (DEBUG)
     {
