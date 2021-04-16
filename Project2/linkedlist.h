@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 typedef struct node_t{
     char *word;
@@ -18,6 +19,8 @@ node_t* initNode(char* w)
     new_node->frequency = 0.0;
     new_node->mean_frequency = 0.0;
     new_node->next = NULL;
+	if(DEBUG)
+	printf("Initialized %s\n", w);
     return new_node;
 }
 
@@ -26,33 +29,43 @@ node_t* insert(node_t *root, char* w)
     node_t* pre = initNode(w);
     if(root == NULL){
         root = pre;
+	if(DEBUG)
+	printf("Added NULL %s\n", w);
         return root;
     }
     pre->next = root;
     root = pre;
+	if(DEBUG)
+	printf("Added %s\n", w);
     return root;
 }
 
 node_t* add(node_t *root, char* w)
 {   
-    node_t* new_node = initNode(w);
+
     if (root == NULL){
+	node_t* new_node = initNode(w);
         root = new_node;
+	if(DEBUG)
+	printf("Added %s\n", w);
         return root;
     }
 
-    if(strcmp(w, root->word) == 0){
+    else if(strcmp(w, root->word) == 0){
         root->count++;
         return root;
     }
 
-    if(strcmp(w, root->word) > 0){
+    else if(strcmp(w, root->word) > 0){
             root->next = add(root->next, w);
     }
-    if(strcmp(w, root->word) < 0){
+    else if(strcmp(w, root->word) < 0){
             return insert(root, w);
     }
-    return root;
+else{
+	if(DEBUG)
+	printf("DANGER\n");
+    return root;}
 }
 
 node_t* find(node_t *root, char* w){
@@ -72,7 +85,7 @@ node_t* find(node_t *root, char* w){
 void printList(node_t *root)
 {
     if (root != NULL){
-        printf("%s | %.1f | %.2f | %f\n", root->word, root->count, root->frequency, root->mean_frequency);
+        printf("%s\t | %.1f\t | %.2f\t | %f\n", root->word, root->count, root->frequency, root->mean_frequency);
         printList(root->next);
     }
     return;

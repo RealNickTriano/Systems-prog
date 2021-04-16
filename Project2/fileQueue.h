@@ -87,7 +87,9 @@ char *dequeue(queue_t *Q, char *item)
 
 	while (Q->count == 0 && Q->open)
 	{
+		
 		pthread_cond_wait(&Q->read_ready, &Q->lock);
+		
 	}
 	if (Q->count == 0)
 	{
