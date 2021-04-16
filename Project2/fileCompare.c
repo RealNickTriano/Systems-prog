@@ -8,7 +8,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <signal.h>
-#include <pthread.h>
+#include <pthread.h> // -pthread when compiling
+#include <math.h>   // -lm when compiling
 #include "strbuf.h"
 #include "fileQueue.h"
 #include "linkedlist.h"
@@ -27,8 +28,16 @@ char file_name_suffix[] = ".txt";
 int files = 0;
 pthread_mutex_t lock;
 wfd_t *wfd_repo;
+int number_of_comparisons = 0;
 
+/*typedef struct jsds
+{
+    char *pair_path; // names of pair of files
+    float JSD;   // JSD calculated for the pair
+    int combined_word_count; // combined TOTAL word count
+};*/
 
+struct jsds *JSD_struct;
 
 int is_directory(const char *path) // !=0 if file is directory
 {
@@ -43,6 +52,9 @@ int is_file(const char *path) //!=0 if file is regular file
     stat(path, &statbuf);
     return S_ISREG(statbuf.st_mode);
 }
+
+
+
 
 struct targs
 {
@@ -128,11 +140,11 @@ char *path;
                 // now we can add the word to linked list
                 if (words_found == 1)
                 {
-                    list = initNode(word);
+                    list = initNode(word, 0.0);
                 }
                 else
                 {
-                    list = add(list, word);
+                    list = add(list, word, 0.0);
                 }
 		
             }
@@ -171,106 +183,148 @@ char *path;
     
 }
 
-/*int inList(node_t *list1, node_t *list2) // check if word in list 1 is in list 2 RETURNS 1 if item is in list 2 and 0 if not
-{
-    node_t *temp;
-    temp = list2;
-
-    while(list1 != NULL)
-    {
-        while(temp != NULL) //look through file 2 word list to see if word from file 1 is in file 2
-        {
-            if(strcmp(list1->word, temp->word) == 0) // word is in list 2
-            {
-                return 1;
-            }
-            else
-            {
-                temp = temp->next;
-            }
-        }
-    }
-	free (temp);
-    return 0;
-}
-node_t* computeKLD(node_t *file1, node_t *file2, node_t *mean_file)
+node_t* computeKLD(node_t *file1, node_t *file2)
 {
     int one_freq = 0;
-    double mean_frequency, freq1, freq2;
-    node_t *temp;
-    temp = file2;
+    double mean, freq1, freq2;
+    node_t *mean_list = NULL;
+    node_t *tempfile2 = file2;
+    node_t *tempfile1 = file1;
 
-    while(file1 != NULL)
+    while (tempfile1 != NULL && tempfile2 != NULL)
     {
-        if(mean_file == NULL || inList(file1, mean_file) == 1) // if we already checked the word go next
+        if(strcmp(tempfile1->word, tempfile2->word) == 0)
         {
-            file1 = file1->next;
+            //two words match move both pointers
+            //set frequencys accordingly
+            freq1 = tempfile1->frequency;
+            freq2 = tempfile2->frequency;
+            mean = (0.5)*(freq1 + freq2);
+            mean_list = add(mean_list, tempfile1->word, mean);
+            if(DEBUG)
+                printf("mean frequency for %s is %f\n", tempfile1->word, mean);
+            tempfile1 = tempfile1->next;
+            tempfile2 = tempfile2->next;
+            
+        }
+
+        else if(strcmp(tempfile1->word, tempfile2->word) > 0)
+        {
+            // word in file 2 comes before file 1 move file 2 pointer
+            //set frequencys accordingly
+            freq1 = 0;
+            freq2 = tempfile2->frequency;
+            mean = (0.5)*(freq1 + freq2);
+            mean_list = add(mean_list, tempfile2->word, mean);
+            if(DEBUG)
+                printf("mean frequency for %s is %f\n", tempfile1->word, mean);
+            tempfile2 = tempfile2->next;
+        }
+
+        else if(strcmp(tempfile1->word, tempfile2->word) < 0)
+        {
+            // word in file 1 comes before file 2 move file 1 pointer
+            //set frequencys accordingly
+            freq1 = tempfile1->frequency;
+            freq2 = 0;
+            mean = (0.5) * (freq1 + freq2);
+            mean_list = add(mean_list, tempfile1->word, mean);
+            if(DEBUG)
+                printf("mean frequency for %s is %f\n", tempfile1->word, mean);
+            tempfile1 = tempfile1->next;
         }
         else
         {
-            freq1 = file1->frequency;
-
-            while(temp != NULL) //look through file 2 word list to see if word from file 1 is in file 2
-            {
-                if(strcmp(file1->word, temp->word) == 0) // word is in file 2 as well
-                {
-                    freq2 = temp->frequency;
-                    break;
-                }
-                else
-                {
-                    temp = temp->next;
-                    freq2 = 0;  // freq2 will be 0 if word is never found in file 2
-                }
-            }
-
-            one_freq = 1;
-
-            //calculate mean frequency
-            // add to linked list
-            if(one_freq == 1)
-            {
-                mean_file  = initNode(file1->word);
-            }
-            else
-            {
-                mean_file = add(mean_file, file1->word);
-            }
-
-            mean_file->mean_frequency = (1/2) * (freq1 + freq2); // set mean freq of word
-            file1 = file1->next; // go to next word and repeat proccess
+            if(DEBUG)
+                printf("Error in computeKLD\n");
         }
     }
-free(temp);
-    return mean_file;
+    if(tempfile1 == NULL)
+    {
+        while(tempfile2 != NULL)
+        {
+            // rest of words in tempfile2 have no match 
+            freq1 = 0;
+            freq2 = tempfile2->frequency;
+            mean = (0.5)*(freq1 + freq2);
+            mean_list = add(mean_list, tempfile2->word, mean);
+            if(DEBUG)
+                printf("mean frequency for %s is %f\n", tempfile2->word, mean);
+            tempfile2 = tempfile2->next;
+        }
+    }
+    else if(tempfile2 == NULL)
+    {
+        while(tempfile1 != NULL)
+        {
+            // rest of words in file1 have no match 
+            freq1 = tempfile1->frequency;
+            freq2 = 0;
+            mean = (1/2)*(freq1 + freq2);
+            mean_list = add(mean_list, tempfile1->word, mean);
+            if(DEBUG)
+                printf("mean frequency for %s is %f\n", tempfile1->word, mean);
+            tempfile1 = tempfile1->next;
+        }
+    }
+    return mean_list;
 }
 void computeJSD()
 {
     
     char *file_pair_name;
     node_t *file1, *file2;
-    node_t *mean_file = NULL;
-
+    node_t *mean_files = NULL;
+    wfd_t *temp_repo = wfd_repo;
     
+    number_of_comparisons = (0.5) * files * (files-1);
+    //JSD_struct = (jsds*)malloc(sizeof(jsds) * number_of_comparisons);
     // compute KLD for each file
-    file1 = wfd_repo->list; 
-    file2 = (wfd_repo->next)->list;
+    //while (wfd_repo != NULL)
+    //{
+    
+        file1 = wfd_repo->list; 
+        file2 = (wfd_repo->next)->list;
 
-    mean_file = computeKLD(file1, file2, mean_file);
-    mean_file =computeKLD(file2, file1, mean_file);
+        mean_files = computeKLD(file1, file2);
+        node_t *temp_mean_files = mean_files;
+        float kld;
+        while(file1 != NULL || temp_mean_files != NULL)
+        {
+            if(strcmp(file1->word, temp_mean_files->word) == 0)
+            {
+                kld += (file1->frequency * log2((file1->frequency / temp_mean_files->frequency)));
+                file1 = file1->next;
+                temp_mean_files = temp_mean_files->next;
+            }
+            else if(strcmp(file1->word, temp_mean_files->word) > 0)
+            {
+                temp_mean_files = temp_mean_files->next;
+            }
+            else if(strcmp(file1->word, temp_mean_files->word) < 0)
+            {
+                file1 = file1->next;
+            }
+        }
+        wfd_repo->kld = kld;
+        //wfd_repo = wfd_repo->next;
+    //}
+    /*while(wfd_repo != NULL)
+    {
+        jsds[i]->JSD
+    }*/
 
 	printf("MEAN FILE...\n");
-    printList(mean_file);
+    printList(mean_files);
+    printListWFD(wfd_repo);
 
 //free(file1);
 //free(file2);
-free(mean_file);
-    
+//free(mean_file);
 
-    
     // compute JSD for each file pair
 	return;
-}*/
+}
 int SetOptions(char *argv) // sets number of threads/ file name suffix
 {
     if (strncmp(argv, "-d", sizeof(char) * 2) == 0)
@@ -409,7 +463,7 @@ for (int i = 0; i < file_threads; i++)
 		printListWFD(wfd_repo);
 	}
     
-		
+		computeJSD();
     if (DEBUG)
     {
         printf("File Queue...\n");

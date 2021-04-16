@@ -11,12 +11,12 @@ typedef struct node_t{
     struct node_t* next;
 }node_t;
 
-node_t* initNode(char* w)
+node_t* initNode(char* w, double f)
 {
     node_t *new_node = (node_t*)malloc(sizeof(node_t));
     new_node->word = w;
     new_node->count = 1;
-    new_node->frequency = 0.0;
+    new_node->frequency = f;
     new_node->mean_frequency = 0.0;
     new_node->next = NULL;
 	if(DEBUG)
@@ -24,9 +24,9 @@ node_t* initNode(char* w)
     return new_node;
 }
 
-node_t* insert(node_t *root, char* w)
+node_t* insert(node_t *root, char* w, double f)
 {
-    node_t* pre = initNode(w);
+    node_t* pre = initNode(w, f);
     if(root == NULL){
         root = pre;
 	if(DEBUG)
@@ -40,11 +40,11 @@ node_t* insert(node_t *root, char* w)
     return root;
 }
 
-node_t* add(node_t *root, char* w)
+node_t* add(node_t *root, char* w, double f)
 {   
 
     if (root == NULL){
-	node_t* new_node = initNode(w);
+	node_t* new_node = initNode(w, f);
         root = new_node;
 	if(DEBUG)
 	printf("Added %s\n", w);
@@ -57,10 +57,10 @@ node_t* add(node_t *root, char* w)
     }
 
     else if(strcmp(w, root->word) > 0){
-            root->next = add(root->next, w);
+            root->next = add(root->next, w, f);
     }
     else if(strcmp(w, root->word) < 0){
-            return insert(root, w);
+            return insert(root, w, f);
     }
 else{
 	if(DEBUG)
@@ -85,7 +85,7 @@ node_t* find(node_t *root, char* w){
 void printList(node_t *root)
 {
     if (root != NULL){
-        printf("%s\t | %.1f\t | %.2f\t | %f\n", root->word, root->count, root->frequency, root->mean_frequency);
+        printf("%s\t | %.1f\t | %.6f\t | %f\n", root->word, root->count, root->frequency, root->mean_frequency);
         printList(root->next);
     }
     return;
