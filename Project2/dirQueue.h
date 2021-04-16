@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
-//Remove these after committing to fileCompare.c
-#include <dirent.h>
-#include <string.h>
 
 #ifndef QSIZE
 #define QSIZE 8
@@ -28,9 +25,9 @@ typedef struct
 	pthread_mutex_t lock;
 	pthread_cond_t read_ready;
 	pthread_cond_t write_ready;
-} queue_t;
+} dir_queue_t;
 
-int init(queue_t *Q, int a)
+int init_dir(dir_queue_t *Q, int a)
 {
 	Q->count = 0;
 	Q->head = 0;
@@ -43,7 +40,7 @@ int init(queue_t *Q, int a)
 	return 0;
 }
 
-int destroy(queue_t *Q)
+int destroy_dir(dir_queue_t *Q)
 {
 	pthread_mutex_destroy(&Q->lock);
 	pthread_cond_destroy(&Q->read_ready);
@@ -54,7 +51,7 @@ int destroy(queue_t *Q)
 
 // add item to end of queue
 // if the queue is full, block until space becomes available
-int enqueue(queue_t *Q, char *item)
+int enqueue_dir(dir_queue_t *Q, char *item)
 {
 	pthread_mutex_lock(&Q->lock);
 
@@ -70,7 +67,7 @@ int enqueue(queue_t *Q, char *item)
 
 	unsigned i = Q->head + Q->count;
 	if (i >= QSIZE){
-        size_t data_size = 2 * sizeof(data);
+        size_t data_size = 2 * sizeof(Q->data);
         char **data_new = realloc(Q->data, sizeof(char*) * data_size);
         if (!data_new) return 1;
 
@@ -93,7 +90,7 @@ int enqueue(queue_t *Q, char *item)
 	return 0;
 }
 
-char *dequeue(queue_t *Q, char *item)
+char *dequeue_dir(dir_queue_t *Q, char *item)
 {
 	pthread_mutex_lock(&Q->lock);
 
@@ -134,7 +131,7 @@ char *dequeue(queue_t *Q, char *item)
 	return item;
 }
 
-int qclose(queue_t *Q)
+int qclose_dir(dir_queue_t *Q)
 {
 	pthread_mutex_lock(&Q->lock);
 	Q->open = 0;
@@ -145,7 +142,7 @@ int qclose(queue_t *Q)
 	return 0;
 }
 
-int printQueue(queue_t *Q)
+int printQueue_dir(dir_queue_t *Q)
 {
 	for (int i = 0; i < Q->count; i++)
 	{
@@ -153,54 +150,3 @@ int printQueue(queue_t *Q)
 	}
 }
 
-void* SearchDir(void *A)
-{
-    struct targs *args = A;
-
-    sleep(1);
-    while((args->Q)->count != 0)
-    {
-        char *path;
-	    path = dequeue(args->Q, path);
-        if (DEBUG) printf("Directory Path: %s\n");
-
-        DIR *dir;
-        struct dirent *de;
-        
-        if((dir = opendir(path)) == NULL)
-        {
-            fprintf(stderr,"Failed to open directory: %s\n", path);
-            return;
-        }
-
-        while ((de = readdir(dir)) != NULL)
-        {
-            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
-                {
-                        // go to the next files
-                }
-
-            if (de->d_type == DT_REG)
-            {
-                char *fname = de->d_name;
-                size_t new_path_size = sizeof(path) + sizeof(fname) + 2;
-                char new_path[new_path_size];
-                strcpy(new_path, path);
-                strcat(new_path, "/");
-                strcat(new_path, fname);
-                enqueue(&file_q, new_path_size);
-            }
-
-            else if (de->d_type == DT_DIR)
-            {
-                char *dname = de->d_name;
-                size_t new_path_size = sizeof(path) + sizeof(dname) + 2;
-                char new_path[new_path_size];
-                strcpy(new_path, path);
-                strcat(new_path, "/");
-                strcat(new_path, dname);
-                enqueue(&directory_q, new_path_size);
-            }
-        }
-    }
-}
