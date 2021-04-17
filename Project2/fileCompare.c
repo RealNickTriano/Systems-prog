@@ -12,7 +12,7 @@
 #include <math.h>   // -lm when compiling
 #include "strbuf.h"
 #include "fileQueue.h"
-//#include "dirQueue.h"
+#include "dirQueue.h"
 #include "linkedlist.h"
 
 
@@ -63,22 +63,23 @@ struct targs
 {
     queue_t *Q;
 };
-/*struct targs2
+struct targs2
 {
-    dir_queue_t *Q;
-};*/
+    queue_t *fQ;
+    dir_queue_t *dQ;
+};
 
 
-/*void* SearchDir(void *A)
+void* SearchDir(void *A)
 {
     struct targs2 *args = A;
 
     sleep(1);
-    while((args->Q)->count != 0)
+    while((args->dQ)->count != 0)
     {
         char *path;
-	    path = dequeue_dir(args->Q, path);
-        if (DEBUG) printf("Directory Path: %s\n");
+	    path = dequeue_dir(args->dQ, path);
+        if (DEBUG) printf("Directory Path: %s\n", path);
 
         DIR *dir;
         struct dirent *de;
@@ -104,7 +105,7 @@ struct targs
                 strcpy(new_path, path);
                 strcat(new_path, "/");
                 strcat(new_path, fname);
-                enqueue_dir(&file_q, new_path_size);
+                enqueue(args->fQ, new_path);
             }
 
             else if (de->d_type == DT_DIR)
@@ -115,11 +116,11 @@ struct targs
                 strcpy(new_path, path);
                 strcat(new_path, "/");
                 strcat(new_path, dname);
-                enqueue_dir(&directory_q, new_path_size);
+                enqueue_dir(args->dQ, new_path);
             }
         }
     }
-}*/
+}
 
 void* FindWFD(void *A)
 {
@@ -504,9 +505,9 @@ int main(int argc, char **argv)
 {
     int opt_arg_count = 0;
     struct targs *args;
-    //struct targs2 *args2;
+    struct targs2 *args2;
 	int err;
-    pthread_t *tids; //*tids2;
+    pthread_t *tids, *tids2;
 
     if (argc < 3) //not enough arguments
     {
@@ -515,17 +516,17 @@ int main(int argc, char **argv)
 
     queue_t file_q; // Create and initialize file/directory queues
     init(&file_q);
-	queue_t directory_q;
-    //dir_queue_t directory_q;
-    //init_dir(&directory_q, directory_threads);
-	init(&directory_q);
+	//queue_t directory_q;
+    dir_queue_t directory_q;
+    init_dir(&directory_q, directory_threads);
+	//init(&directory_q);
 
     opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments
 
     args = malloc(file_threads * sizeof(struct targs));
-    //args2 = malloc(directory_threads * sizeof(struct targs2));
+    args2 = malloc(directory_threads * sizeof(struct targs2));
     tids = malloc(file_threads * sizeof(pthread_t));
-    //tids2 = malloc(directory_threads * sizeof(pthread_t));
+    tids2 = malloc(directory_threads * sizeof(pthread_t));
     pthread_mutex_init(&lock, NULL);
 
     // start file threads here:
@@ -536,22 +537,23 @@ int main(int argc, char **argv)
         err = pthread_create(&tids[i], NULL, FindWFD, &args[i]);
         if (err != 0)
         {
-            perror("creation failed");
+            perror("File thread creation failed");
             return EXIT_FAILURE;
         }
     }
 
     //start directory threads here:
-    /*for (int i = 0; i < directory_threads; i++)
+    for (int i = 0; i < directory_threads; i++)
     {
-        args2[i].Q = &directory_q;
+        args2[i].fQ = &file_q;
+        args2[i].dQ = &directory_q;
         err = pthread_create(&tids2[i], NULL, SearchDir, &args2[i]);
         if (err != 0)
         {
-            perror("creation failed");
+            perror("Directory thread creation failed");
             return EXIT_FAILURE;
         }
-    }*/
+    }
 
 
     for (int i = 1; i < argc; i++)
@@ -559,7 +561,7 @@ int main(int argc, char **argv)
         if (is_directory(argv[i]) != 0) // found a directory
         {
             // add to directory queue
-            enqueue(&directory_q, argv[i]);
+            enqueue_dir(&directory_q, argv[i]);
         }
         else if (is_file(argv[i]) != 0) // found a file
         {
@@ -589,10 +591,10 @@ int main(int argc, char **argv)
     }
 
     // join directory threads
-    /*for (int i = 0; i < directory_threads; i++)
+    for (int i = 0; i < directory_threads; i++)
     {
         pthread_join(tids2[i], NULL);
-    }*/
+    }
 
     
 
@@ -608,7 +610,7 @@ int main(int argc, char **argv)
         printf("File Queue...\n");
         printQueue(&file_q);
         printf("Directory Queue...\n");
-        printQueue(&directory_q);
+        printQueue_dir(&directory_q);
     }
 
     if(DEBUG)
@@ -628,5 +630,8 @@ int main(int argc, char **argv)
     destroy(&file_q);
     free(tids);
     free(args);
+    destroy_dir(&directory_q);
+    free(tids2);
+    free(args2);
     return EXIT_SUCCESS;
 }

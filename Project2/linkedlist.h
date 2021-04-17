@@ -3,6 +3,10 @@
 #include <string.h>
 #include <pthread.h>
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 typedef struct node_t{
     char *word;
     float count;

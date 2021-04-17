@@ -134,8 +134,8 @@ int sb_concat(strbuf_t *S, char *str){
         return 0;
 }
 
-const char* sb_word(strbuf_t *S, int len){
-        char str[len];
+const char* sb_word(strbuf_t *S, int len, char* str){
+        //char str[len];
         strncpy(str, S->data, len);
         return str;
 }

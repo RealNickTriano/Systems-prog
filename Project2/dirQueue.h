@@ -5,13 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <pthread.h>
 
 #ifndef QSIZE
 #define QSIZE 8
 #endif
 
-#ifndef DEBUG
+#ifndef DEBUG:wq
 #define DEBUG 0
 #endif
 
@@ -68,10 +69,11 @@ int enqueue_dir(dir_queue_t *Q, char *item)
 	unsigned i = Q->head + Q->count;
 	if (i >= QSIZE){
         size_t data_size = 2 * sizeof(Q->data);
-        char **data_new = realloc(Q->data, sizeof(char*) * data_size);
+        char **data_new = (char**)realloc(Q->data, sizeof(char*) * data_size);
         if (!data_new) return 1;
 
-        Q->data = data_new;
+        //Q->data = data_new;
+		memcpy(Q->data, data_new, sizeof(char*) * data_size);
 
         if (DEBUG) printf("Increased size to %lu\n", sizeof(Q->data));
     } 
