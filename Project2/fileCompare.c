@@ -30,6 +30,7 @@ int files = 0;
 pthread_mutex_t lock;
 wfd_t *wfd_repo;
 int number_of_comparisons = 0;
+struct jsds *JSD_struct;
 
 typedef struct jsds
 {
@@ -338,8 +339,8 @@ void computeJSD()
     int i = 0;
     
     number_of_comparisons = (0.5) * files * (files-1);
-    struct jsds *JSD_struct;
-    JSD_struct = (jsds*)malloc(number_of_comparisons * sizeof(struct jsds));
+    
+    JSD_struct = (jsds*)malloc((number_of_comparisons) * sizeof(struct jsds));
     for (int j = 0; j < number_of_comparisons; j++)
     {
         JSD_struct[j].path1 = NULL;
@@ -359,11 +360,14 @@ void computeJSD()
         {
             node_t *mean_files = NULL;
             file2 = (temp_repo->next)->list;
-
+            if(DEBUG)
+            {
+                printf("File 1: %s\t File 2: %s\n", wfd_repo->path, (temp_repo->next)->path);
+            }
             mean_files = computeFBar(file1, file2);
             node_t *temp_mean_files = mean_files;
             double kld1 = 0.0, kld2 = 0.0;
-            while(file1 != NULL || temp_mean_files != NULL) // find kld for file 1
+            while(file1 != NULL && temp_mean_files != NULL) // find kld for file 1
             {
                 if(strcmp(file1->word, temp_mean_files->word) == 0)
                 {
@@ -381,7 +385,7 @@ void computeJSD()
                 }
             }
             temp_mean_files = mean_files; // reset pointer to beginning of mean freq list
-            while(file2 != NULL || temp_mean_files != NULL) // find kld for file 2
+            while(file2 != NULL && temp_mean_files != NULL) // find kld for file 2
             {
                 if(strcmp(file2->word, temp_mean_files->word) == 0)
                 {
@@ -412,6 +416,7 @@ void computeJSD()
                 JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
             }
             temp_repo = temp_repo->next;
+            i++;
         }
     wfd_repo = wfd_repo->next;
     temp_repo = wfd_repo;
@@ -606,6 +611,14 @@ int main(int argc, char **argv)
         printQueue(&directory_q);
     }
 
+    if(DEBUG)
+        {
+            for (int i = 0; i < number_of_comparisons; i++)
+            {
+                printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
+                JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
+            }
+        }
     if (DEBUG)
     {
         printf("dir threads: %d\nfile threads: %d\nanalysis threads: %d\noptional arguments: %d\n", directory_threads, file_threads, analysis_threads, opt_arg_count);
