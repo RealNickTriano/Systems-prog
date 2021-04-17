@@ -9,12 +9,11 @@
 #include <dirent.h>
 #include <signal.h>
 #include <pthread.h> // -pthread when compiling
-#include <math.h>   // -lm when compiling
+#include <math.h>    // -lm when compiling
 #include "strbuf.h"
 #include "fileQueue.h"
 #include "dirQueue.h"
 #include "linkedlist.h"
-
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -34,13 +33,11 @@ struct jsds *JSD_struct;
 
 typedef struct jsds
 {
-    char *path1; // name of first file
-    char *path2; // name of second file
-    double JSD;   // JSD calculated for the pair
+    char *path1;             // name of first file
+    char *path2;             // name of second file
+    double JSD;              // JSD calculated for the pair
     int combined_word_count; // combined TOTAL word count
-}jsds;
-
-
+} jsds;
 
 int is_directory(const char *path) // !=0 if file is directory
 {
@@ -56,9 +53,6 @@ int is_file(const char *path) //!=0 if file is regular file
     return S_ISREG(statbuf.st_mode);
 }
 
-
-
-
 struct targs
 {
     queue_t *Q;
@@ -69,33 +63,33 @@ struct targs2
     dir_queue_t *dQ;
 };
 
-
-void* SearchDir(void *A)
+void *SearchDir(void *A)
 {
     struct targs2 *args = A;
 
     sleep(1);
-    while((args->dQ)->count != 0)
+    while ((args->dQ)->count != 0)
     {
         char *path;
-	    path = dequeue_dir(args->dQ, path);
-        if (DEBUG) printf("Directory Path: %s\n", path);
+        path = dequeue_dir(args->dQ, path);
+        if (DEBUG)
+            printf("Directory Path: %s\n", path);
 
         DIR *dir;
         struct dirent *de;
-        
-        if((dir = opendir(path)) == NULL)
+
+        if ((dir = opendir(path)) == NULL)
         {
-            fprintf(stderr,"Failed to open directory: %s\n", path);
+            fprintf(stderr, "Failed to open directory: %s\n", path);
             return;
         }
 
         while ((de = readdir(dir)) != NULL)
         {
             if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
-                {
-                        // go to the next files
-                }
+            {
+                // go to the next files
+            }
 
             else if (de->d_type == DT_REG)
             {
@@ -122,129 +116,127 @@ void* SearchDir(void *A)
     }
 }
 
-void* FindWFD(void *A)
+void *FindWFD(void *A)
 {
     int bytes_read, input_fd;
-    
+
     float wfd = 0.0;
     char buf[BUFSIZE];
-    char character; 
+    char character;
     //char adjacent_character;
     int found_end = 0; //A boolean to check if we found the end of a word
     int word_len = 0;
     int word_start = 0; //The start position of a word
     //int word_end = 0;   //The end position of a word
     char *word;
-	struct targs *args = A;
+    struct targs *args = A;
     node_t *list;
     strbuf_t str;
-    
-	sleep(1);
-while((args->Q)->count != 0)
-{
-char *path;
-	path = dequeue(args->Q, path);
-        //sb_init(&str, BUFSIZE);
-    float words_found = 0;
-    input_fd = open(path, O_RDONLY);
-    while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
+
+    sleep(1);
+    while ((args->Q)->count != 0)
     {
-        // convert letters to all lowercase
-        for (int i = 0; i < bytes_read; i++)
+        char *path;
+        path = dequeue(args->Q, path);
+        //sb_init(&str, BUFSIZE);
+        float words_found = 0;
+        input_fd = open(path, O_RDONLY);
+        while ((bytes_read = read(input_fd, buf, BUFSIZE)) > 0) //reading file
         {
-            buf[i] = tolower(buf[i]);
-        }
-
-        for (int i = 0; i < bytes_read; i++)
-        {
-            character = buf[i];
-
-            if (isalpha(character) != 0 || isdigit(character) != 0 || character == '-')
+            // convert letters to all lowercase
+            for (int i = 0; i < bytes_read; i++)
             {
-		if(word_start == 0)
-		{
-			sb_init(&str, BUFSIZE);
-			word_start = 1;
-
-		}
-                
-                sb_append(&str, character);
-                word_len++;
+                buf[i] = tolower(buf[i]);
             }
-            else if (isspace(character) != 0)
+
+            for (int i = 0; i < bytes_read; i++)
             {
-                if (word_start == 1)
+                character = buf[i];
+
+                if (isalpha(character) != 0 || isdigit(character) != 0 || character == '-')
                 {
-                    found_end = 1;
-                    word_start = 0;
+                    if (word_start == 0)
+                    {
+                        sb_init(&str, BUFSIZE);
+                        word_start = 1;
+                    }
+
+                    sb_append(&str, character);
+                    word_len++;
                 }
-                words_found++;
-            }
+                else if (isspace(character) != 0)
+                {
+                    if (word_start == 1)
+                    {
+                        found_end = 1;
+                        word_start = 0;
+                    }
+                    words_found++;
+                }
 
-            if (found_end == 1)
-            {
-                found_end = 0; // reset found_end
-                word = malloc(sizeof(char) * word_len);
-		if(word == NULL)
-		{
-			perror("malloc: ");
-		}
-                //strncpy(word, &sb_word(str, word_len), word_len);
-		sb_word(&str, word_len, word);
-                sb_destroy(&str);
-                //sb_init(&str, BUFSIZE);
+                if (found_end == 1)
+                {
+                    found_end = 0; // reset found_end
+                    word = malloc(sizeof(char) * word_len);
+                    if (word == NULL)
+                    {
+                        perror("malloc: ");
+                    }
+                    //strncpy(word, &sb_word(str, word_len), word_len);
+                    sb_word(&str, word_len, word);
+                    sb_destroy(&str);
+                    //sb_init(&str, BUFSIZE);
 
-                /* if(DEBUG)
+                    /* if(DEBUG)
                 {
                     printf("%s\n", word);
                 }*/
-                // now we can add the word to linked list
-                if (words_found == 1)
-                {
-                    list = initNode(word, 0.0);
+                    // now we can add the word to linked list
+                    if (words_found == 1)
+                    {
+                        list = initNode(word, 0.0);
+                    }
+                    else
+                    {
+                        list = add(list, word, 0.0);
+                    }
                 }
-                else
-                {
-                    list = add(list, word, 0.0);
-                }
-		
-            }
-        }//sb_destroy(&str);
-    }
+            } //sb_destroy(&str);
+        }
 
-    // done reading file
-    if (DEBUG)
-    {	pthread_mutex_lock(&lock);
-	printf("FILE: %s\n", path);
-        printList(list);
-	pthread_mutex_unlock(&lock);
+        // done reading file
+        if (DEBUG)
+        {
+            pthread_mutex_lock(&lock);
+            printf("FILE: %s\n", path);
+            printList(list);
+            pthread_mutex_unlock(&lock);
+        }
+
+        // now calculate WFD of file
+        node_t *temp = list;
+        while (temp != NULL)
+        {
+            wfd = (temp->count / words_found);
+            temp->frequency = wfd;
+            temp = temp->next;
+        }
+        free(temp);
+        //destroyList(list);
+        // add to WFD repo
+        files++;
+        if (files == 1) // if its the first file
+        {
+            wfd_repo = initNodeWFD(path, list, words_found);
+        }
+        else
+        {
+            wfd_repo = addNodeWFD(wfd_repo, path, list, words_found);
+        }
     }
-	
-    // now calculate WFD of file
-    node_t *temp = list;
-    while (temp != NULL)
-    {
-        wfd = (temp->count / words_found);
-        temp->frequency = wfd;
-        temp = temp->next;
-    }
-    free(temp);
-    //destroyList(list);
-    // add to WFD repo
-	files++;
-    if(files == 1) // if its the first file
-    {
-        wfd_repo = initNodeWFD(path, list, words_found);
-    }
-    else 
-    {
-        wfd_repo = addNodeWFD(wfd_repo, path, list, words_found);
-    }
-	}
-    
 }
 
-node_t* computeFBar(node_t *file1, node_t *file2)
+node_t *computeFBar(node_t *file1, node_t *file2)
 {
     int one_freq = 0;
     double mean, freq1, freq2;
@@ -254,35 +246,34 @@ node_t* computeFBar(node_t *file1, node_t *file2)
 
     while (tempfile1 != NULL && tempfile2 != NULL)
     {
-        if(strcmp(tempfile1->word, tempfile2->word) == 0)
+        if (strcmp(tempfile1->word, tempfile2->word) == 0)
         {
             //two words match move both pointers
             //set frequencys accordingly
             freq1 = tempfile1->frequency;
             freq2 = tempfile2->frequency;
-            mean = (0.5)*(freq1 + freq2);
+            mean = (0.5) * (freq1 + freq2);
             mean_list = add(mean_list, tempfile1->word, mean);
-            if(DEBUG)
+            if (DEBUG)
                 printf("mean frequency for %s is %f\n", tempfile1->word, mean);
             tempfile1 = tempfile1->next;
             tempfile2 = tempfile2->next;
-            
         }
 
-        else if(strcmp(tempfile1->word, tempfile2->word) > 0)
+        else if (strcmp(tempfile1->word, tempfile2->word) > 0)
         {
             // word in file 2 comes before file 1 move file 2 pointer
             //set frequencys accordingly
             freq1 = 0;
             freq2 = tempfile2->frequency;
-            mean = (0.5)*(freq1 + freq2);
+            mean = (0.5) * (freq1 + freq2);
             mean_list = add(mean_list, tempfile2->word, mean);
-            if(DEBUG)
+            if (DEBUG)
                 printf("mean frequency for %s is %f\n", tempfile1->word, mean);
             tempfile2 = tempfile2->next;
         }
 
-        else if(strcmp(tempfile1->word, tempfile2->word) < 0)
+        else if (strcmp(tempfile1->word, tempfile2->word) < 0)
         {
             // word in file 1 comes before file 2 move file 1 pointer
             //set frequencys accordingly
@@ -290,40 +281,40 @@ node_t* computeFBar(node_t *file1, node_t *file2)
             freq2 = 0;
             mean = (0.5) * (freq1 + freq2);
             mean_list = add(mean_list, tempfile1->word, mean);
-            if(DEBUG)
+            if (DEBUG)
                 printf("mean frequency for %s is %f\n", tempfile1->word, mean);
             tempfile1 = tempfile1->next;
         }
         else
         {
-            if(DEBUG)
+            if (DEBUG)
                 printf("Error in computeKLD\n");
         }
     }
-    if(tempfile1 == NULL)
+    if (tempfile1 == NULL)
     {
-        while(tempfile2 != NULL)
+        while (tempfile2 != NULL)
         {
-            // rest of words in tempfile2 have no match 
+            // rest of words in tempfile2 have no match
             freq1 = 0;
             freq2 = tempfile2->frequency;
-            mean = (0.5)*(freq1 + freq2);
+            mean = (0.5) * (freq1 + freq2);
             mean_list = add(mean_list, tempfile2->word, mean);
-            if(DEBUG)
+            if (DEBUG)
                 printf("mean frequency for %s is %f\n", tempfile2->word, mean);
             tempfile2 = tempfile2->next;
         }
     }
-    else if(tempfile2 == NULL)
+    else if (tempfile2 == NULL)
     {
-        while(tempfile1 != NULL)
+        while (tempfile1 != NULL)
         {
-            // rest of words in file1 have no match 
+            // rest of words in file1 have no match
             freq1 = tempfile1->frequency;
             freq2 = 0;
-            mean = (1/2)*(freq1 + freq2);
+            mean = (1 / 2) * (freq1 + freq2);
             mean_list = add(mean_list, tempfile1->word, mean);
-            if(DEBUG)
+            if (DEBUG)
                 printf("mean frequency for %s is %f\n", tempfile1->word, mean);
             tempfile1 = tempfile1->next;
         }
@@ -332,16 +323,16 @@ node_t* computeFBar(node_t *file1, node_t *file2)
 }
 void computeJSD()
 {
-    
+
     char *file_pair_name;
     node_t *file1, *file2;
-    
+
     wfd_t *temp_repo = wfd_repo;
     int i = 0;
-    
-    number_of_comparisons = (0.5) * files * (files-1);
-    
-    JSD_struct = (jsds*)malloc((number_of_comparisons) * sizeof(struct jsds));
+
+    number_of_comparisons = (0.5) * files * (files - 1);
+
+    JSD_struct = (jsds *)malloc((number_of_comparisons) * sizeof(struct jsds));
     for (int j = 0; j < number_of_comparisons; j++)
     {
         JSD_struct[j].path1 = NULL;
@@ -350,77 +341,77 @@ void computeJSD()
         JSD_struct[j].combined_word_count = 0;
         //args = malloc(file_threads * sizeof(struct targs));
     }
-    
+
     // compute KLD for each file
     //while (wfd_repo != NULL)
     //{
-    while(wfd_repo !=NULL)
+    while (wfd_repo != NULL)
     {
-        file1 = wfd_repo->list; 
-        while(temp_repo->next != NULL)
+        file1 = wfd_repo->list;
+        while (temp_repo->next != NULL)
         {
             node_t *mean_files = NULL;
             file2 = (temp_repo->next)->list;
-            if(DEBUG)
+            if (DEBUG)
             {
                 printf("File 1: %s\t File 2: %s\n", wfd_repo->path, (temp_repo->next)->path);
             }
             mean_files = computeFBar(file1, file2);
             node_t *temp_mean_files = mean_files;
             double kld1 = 0.0, kld2 = 0.0;
-            while(file1 != NULL && temp_mean_files != NULL) // find kld for file 1
+            while (file1 != NULL && temp_mean_files != NULL) // find kld for file 1
             {
-                if(strcmp(file1->word, temp_mean_files->word) == 0)
+                if (strcmp(file1->word, temp_mean_files->word) == 0)
                 {
                     kld1 += (file1->frequency * log2((file1->frequency / temp_mean_files->frequency)));
                     file1 = file1->next;
                     temp_mean_files = temp_mean_files->next;
                 }
-                else if(strcmp(file1->word, temp_mean_files->word) > 0)
+                else if (strcmp(file1->word, temp_mean_files->word) > 0)
                 {
                     temp_mean_files = temp_mean_files->next;
                 }
-                else if(strcmp(file1->word, temp_mean_files->word) < 0)
+                else if (strcmp(file1->word, temp_mean_files->word) < 0)
                 {
                     file1 = file1->next;
                 }
             }
-            temp_mean_files = mean_files; // reset pointer to beginning of mean freq list
-            while(file2 != NULL && temp_mean_files != NULL) // find kld for file 2
+            temp_mean_files = mean_files;                    // reset pointer to beginning of mean freq list
+            while (file2 != NULL && temp_mean_files != NULL) // find kld for file 2
             {
-                if(strcmp(file2->word, temp_mean_files->word) == 0)
+                if (strcmp(file2->word, temp_mean_files->word) == 0)
                 {
                     kld2 += (file2->frequency * log2((file2->frequency / temp_mean_files->frequency)));
                     file2 = file2->next;
                     temp_mean_files = temp_mean_files->next;
                 }
-                else if(strcmp(file2->word, temp_mean_files->word) > 0)
+                else if (strcmp(file2->word, temp_mean_files->word) > 0)
                 {
                     temp_mean_files = temp_mean_files->next;
                 }
-                else if(strcmp(file2->word, temp_mean_files->word) < 0)
+                else if (strcmp(file2->word, temp_mean_files->word) < 0)
                 {
                     file2 = file2->next;
                 }
             }
-            
+
             //compute jsd for pair:
-            JSD_struct[i].JSD = sqrt(((0.5)*kld1) + ((0.5)*kld2));
-            // construct name for pair of files 
-            JSD_struct[i].path1 = wfd_repo->path; // set path for file1
-            JSD_struct[i].path2 = wfd_repo->next->path;    // set path for file1
+            JSD_struct[i].JSD = sqrt(((0.5) * kld1) + ((0.5) * kld2));
+            // construct name for pair of files
+            JSD_struct[i].path1 = wfd_repo->path;       // set path for file1
+            JSD_struct[i].path2 = wfd_repo->next->path; // set path for file1
             JSD_struct[i].combined_word_count = (wfd_repo->word_count + wfd_repo->next->word_count);
 
-            if(DEBUG)
+            if (DEBUG)
             {
                 printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
-                JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
+                       JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
             }
             temp_repo = temp_repo->next;
             i++;
         }
-    wfd_repo = wfd_repo->next;
-    temp_repo = wfd_repo;
+        wfd_repo = wfd_repo->next;
+        temp_repo = wfd_repo;
     }
 
     //}
@@ -429,16 +420,16 @@ void computeJSD()
         jsds[i]->JSD
     }*/
 
-	//printf("MEAN FILE...\n");
+    //printf("MEAN FILE...\n");
     //printList(mean_files);
     //printListWFD(wfd_repo);
 
-//free(file1);
-//free(file2);
-//free(mean_file);
+    //free(file1);
+    //free(file2);
+    //free(mean_file);
 
     // compute JSD for each file pair
-	return;
+    return;
 }
 int SetOptions(char *argv) // sets number of threads/ file name suffix
 {
@@ -506,7 +497,7 @@ int main(int argc, char **argv)
     int opt_arg_count = 0;
     struct targs *args;
     struct targs2 *args2;
-	int err;
+    int err;
     pthread_t *tids, *tids2;
 
     if (argc < 3) //not enough arguments
@@ -516,10 +507,10 @@ int main(int argc, char **argv)
 
     queue_t file_q; // Create and initialize file/directory queues
     init(&file_q);
-	//queue_t directory_q;
+    //queue_t directory_q;
     dir_queue_t directory_q;
     init_dir(&directory_q, directory_threads);
-	//init(&directory_q);
+    //init(&directory_q);
 
     opt_arg_count = CheckArgs(argv, argc, opt_arg_count); // Check for optional arguments
 
@@ -554,7 +545,6 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
     }
-
 
     for (int i = 1; i < argc; i++)
     {
@@ -596,15 +586,13 @@ int main(int argc, char **argv)
         pthread_join(tids2[i], NULL);
     }
 
-    
+    if (DEBUG)
+    {
+        printf("printing repo...\n\n");
+        printListWFD(wfd_repo);
+    }
 
-	if(DEBUG)
-	{
-		printf("printing repo...\n\n");
-		printListWFD(wfd_repo);
-	}
-    
-		computeJSD();
+    computeJSD();
     if (DEBUG)
     {
         printf("File Queue...\n");
@@ -613,14 +601,14 @@ int main(int argc, char **argv)
         printQueue_dir(&directory_q);
     }
 
-    if(DEBUG)
+    if (DEBUG)
+    {
+        for (int i = 0; i < number_of_comparisons; i++)
         {
-            for (int i = 0; i < number_of_comparisons; i++)
-            {
-                printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
-                JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
-            }
+            printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
+                   JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
         }
+    }
     if (DEBUG)
     {
         printf("dir threads: %d\nfile threads: %d\nanalysis threads: %d\noptional arguments: %d\n", directory_threads, file_threads, analysis_threads, opt_arg_count);
