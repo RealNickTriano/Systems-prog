@@ -97,7 +97,7 @@ void* SearchDir(void *A)
                         // go to the next files
                 }
 
-            if (de->d_type == DT_REG)
+            else if (de->d_type == DT_REG)
             {
                 char *fname = de->d_name;
                 size_t new_path_size = sizeof(path) + sizeof(fname) + 2;

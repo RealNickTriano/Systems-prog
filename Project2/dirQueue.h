@@ -54,47 +54,57 @@ int destroy_dir(dir_queue_t *Q)
 // if the queue is full, block until space becomes available
 int enqueue_dir(dir_queue_t *Q, char *item)
 {
-	pthread_mutex_lock(&Q->lock);
+        pthread_mutex_lock(&Q->lock);
 
-	while (Q->open)
-	{
-		pthread_cond_wait(&Q->write_ready, &Q->lock);
-	}
-	if (!Q->open)
-	{
-		pthread_mutex_unlock(&Q->lock);
-		return -1;
-	}
 
-	unsigned i = Q->head + Q->count;
-	if (i >= QSIZE){
+        /*
+        while (Q->open)
+        {
+                pthread_cond_wait(&Q->write_ready, &Q->lock);
+        }
+        */
+        if (!Q->open)
+        {
+                pthread_mutex_unlock(&Q->lock);
+                return -1;
+        }
+
+        unsigned i = Q->head + Q->count;
+        if (i >= QSIZE){
         size_t data_size = 2 * sizeof(Q->data);
         char **data_new = (char**)realloc(Q->data, sizeof(char*) * data_size);
         if (!data_new) return 1;
 
         //Q->data = data_new;
-		memcpy(Q->data, data_new, sizeof(char*) * data_size);
+        memcpy(Q->data, data_new, sizeof(char*) * data_size);
 
         if (DEBUG) printf("Increased size to %lu\n", sizeof(Q->data));
-    } 
+        }
+        //printf("In Enqueue: %s\n", item);
+        char str[sizeof(item)];
+        strcpy(str, item);
+        Q->data[i] = malloc(sizeof(item) + 1);
+        strcpy(Q->data[i], item);
+        //strcpy(Q->data[i], item);
+        printf("INNNNN Enqueue: %s\n", Q->data[i]);
+        printf("Incrementing Count\n");
+        ++Q->count;
 
-	Q->data[i] = item;
-	++Q->count;
+        pthread_cond_signal(&Q->read_ready);
 
-	pthread_cond_signal(&Q->read_ready);
+        pthread_mutex_unlock(&Q->lock);
+        if (DEBUG)
+        {
+                printf("enqueued - %s\n", str);
+        }
 
-	pthread_mutex_unlock(&Q->lock);
-	if (DEBUG)
-	{
-		printf("enqueued - %s\n", item);
-	}
-
-	return 0;
+        return 0;
 }
+
 
 char *dequeue_dir(dir_queue_t *Q, char *item)
 {
-	pthread_mutex_lock(&Q->lock);
+        pthread_mutex_lock(&Q->lock);
 
     if (Q->count == 0)
     {
@@ -106,32 +116,37 @@ char *dequeue_dir(dir_queue_t *Q, char *item)
         pthread_cond_broadcast(&Q->read_ready);
         return NULL;
     }
-	while (Q->count == 0 && Q->active_threads > 0 && Q->open)
-	{
-		
-		pthread_cond_wait(&Q->read_ready, &Q->lock);
-		
-	}
-	if (Q->count == 0)
-	{
-		pthread_mutex_unlock(&Q->lock);
-		return NULL;
-	}
+        while (Q->count == 0 && Q->active_threads > 0 && Q->open)
+        {
+
+                pthread_cond_wait(&Q->read_ready, &Q->lock);
+
+        }
+        if (Q->count == 0)
+        {
+                pthread_mutex_unlock(&Q->lock);
+                return NULL;
+        }
     Q->active_threads++;
 
-	item = Q->data[Q->head];
+        printf("head %d\n", Q->head);
+        printf("In DeQ %s\n", Q->data[Q->head]);
+        item = Q->data[Q->head];
+        //strcpy(item, Q->data[Q->head]);
+        printf("INNNNNNNNN DeQ %s\n", item);
 
-	--Q->count;
-	++Q->head;
+        --Q->count;
+        ++Q->head;
 
-	pthread_mutex_unlock(&Q->lock);
-	if (DEBUG)
-	{
-		printf("dequeued - %s\n", item);
-	}
+        pthread_mutex_unlock(&Q->lock);
+        if (DEBUG)
+        {
+                printf("dequeued - %s\n", item);
+        }
 
-	return item;
+        return item;
 }
+
 
 int qclose_dir(dir_queue_t *Q)
 {
