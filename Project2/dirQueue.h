@@ -82,8 +82,8 @@ int enqueue_dir(dir_queue_t *Q, char *item)
                 if (DEBUG)
                         printf("Increased size to %lu\n", sizeof(Q->data));
         }
-        Q->data[i] = (char*)malloc(sizeof(char) * sizeof(item) + 1);
-        strncpy(Q->data[i], item, sizeof(item) + 1);
+        Q->data[i] = (char*)malloc(sizeof(char) * strlen(item) + 1);
+        strncpy(Q->data[i], item, strlen(item) + 1);
         //Q->data[i] = item;
         if (DEBUG) printf("In Enqueue: %s\n", Q->data[i]);
         //printf("Incrementing Count\n");

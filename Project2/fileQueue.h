@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <pthread.h>
 
 #ifndef QSIZE
@@ -67,7 +68,9 @@ int enqueue(queue_t *Q, char *item)
 	if (i >= QSIZE)
 		i -= QSIZE;
 
-	Q->data[i] = item;
+	Q->data[i] = (char*)malloc(sizeof(char) * strlen(item) + 1);
+    strncpy(Q->data[i], item, strlen(item) + 1);
+	//Q->data[i] = item;
 	++Q->count;
 
 	pthread_cond_signal(&Q->read_ready);
