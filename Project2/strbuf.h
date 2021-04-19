@@ -39,10 +39,10 @@ int sb_append(strbuf_t *S, char item)
                 S->data = p;
                 S->length = size;
 
-                if (DEBUG) printf("Increased size to %lu\n", size);
+                //if (DEBUG) printf("Increased size to %lu\n", size);
         }
 
-        if (DEBUG) printf("Appeneding item %c \n", item);
+       // if (DEBUG) printf("Appeneding item %c \n", item);
         S->data[S->used - 1] = item;
         S->data[S->used] = '\0';
         ++S->used;

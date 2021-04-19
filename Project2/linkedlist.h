@@ -23,8 +23,8 @@ node_t* initNode(char* w, double f)
     new_node->frequency = f;
     new_node->mean_frequency = 0.0;
     new_node->next = NULL;
-	if(DEBUG)
-	printf("Initialized %s\n", w);
+	//if(DEBUG)
+	//printf("Initialized %s\n", w);
     return new_node;
 }
 
@@ -33,14 +33,14 @@ node_t* insert(node_t *root, char* w, double f)
     node_t* pre = initNode(w, f);
     if(root == NULL){
         root = pre;
-	if(DEBUG)
-	printf("Added NULL %s\n", w);
+	//if(DEBUG)
+	//printf("Added NULL %s\n", w);
         return root;
     }
     pre->next = root;
     root = pre;
-	if(DEBUG)
-	printf("Added %s\n", w);
+	//if(DEBUG)
+	//printf("Added %s\n", w);
     return root;
 }
 
@@ -50,8 +50,8 @@ node_t* add(node_t *root, char* w, double f)
     if (root == NULL){
 	node_t* new_node = initNode(w, f);
         root = new_node;
-	if(DEBUG)
-	printf("Added %s\n", w);
+	//if(DEBUG)
+	//printf("Added %s\n", w);
         return root;
     }
 

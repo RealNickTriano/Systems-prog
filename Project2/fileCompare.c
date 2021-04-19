@@ -207,10 +207,10 @@ void *FindWFD(void *A)
         // done reading file
         if (DEBUG)
         {
-            pthread_mutex_lock(&lock);
+           // pthread_mutex_lock(&lock);
             printf("FILE: %s\n", path);
             printList(list);
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
         }
 
         // now calculate WFD of file
@@ -321,27 +321,40 @@ node_t *computeFBar(node_t *file1, node_t *file2)
     }
     return mean_list;
 }
-void computeJSD()
+void *computeJSD(void *A)
 {
-
+    if(DEBUG)
+    {
+        printf("computingJSD...\n");
+    }
     char *file_pair_name;
     node_t *file1, *file2;
+    int check = 0;
 
     wfd_t *temp_repo = wfd_repo;
     int i = 0;
 
     number_of_comparisons = (0.5) * files * (files - 1);
-
-    JSD_struct = (jsds *)malloc((number_of_comparisons) * sizeof(struct jsds));
-    for (int j = 0; j < number_of_comparisons; j++)
+    if(DEBUG)
     {
-        JSD_struct[j].path1 = NULL;
-        JSD_struct[j].path2 = NULL;
-        JSD_struct[j].JSD = 0.0;
-        JSD_struct[j].combined_word_count = 0;
-        //args = malloc(file_threads * sizeof(struct targs));
+        printf("NUM OF COMP: %d\n", number_of_comparisons);
     }
-
+    pthread_mutex_lock(&lock);
+    if(check == 0)
+    {
+        JSD_struct = (jsds *)malloc((number_of_comparisons) * sizeof(struct jsds));
+    
+        for (int j = 0; j < number_of_comparisons; j++)
+        {
+            JSD_struct[j].path1 = NULL;
+            JSD_struct[j].path2 = NULL;
+            JSD_struct[j].JSD = 0.0;
+            JSD_struct[j].combined_word_count = 0;
+            //args = malloc(file_threads * sizeof(struct targs));
+        }
+        check = 1;
+    }
+    pthread_mutex_unlock(&lock);
     // compute KLD for each file
     //while (wfd_repo != NULL)
     //{
@@ -399,14 +412,9 @@ void computeJSD()
             JSD_struct[i].JSD = sqrt(((0.5) * kld1) + ((0.5) * kld2));
             // construct name for pair of files
             JSD_struct[i].path1 = wfd_repo->path;       // set path for file1
-            JSD_struct[i].path2 = wfd_repo->next->path; // set path for file1
+            JSD_struct[i].path2 = temp_repo->next->path; // set path for file1
             JSD_struct[i].combined_word_count = (wfd_repo->word_count + wfd_repo->next->word_count);
 
-            if (DEBUG)
-            {
-                printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
-                       JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
-            }
             temp_repo = temp_repo->next;
             i++;
         }
@@ -424,9 +432,9 @@ void computeJSD()
     //printList(mean_files);
     //printListWFD(wfd_repo);
 
-    //free(file1);
-    //free(file2);
-    //free(mean_file);
+    free(file1);
+    free(file2);
+    
 
     // compute JSD for each file pair
     return;
@@ -498,7 +506,7 @@ int main(int argc, char **argv)
     struct targs *args;
     struct targs2 *args2;
     int err;
-    pthread_t *tids, *tids2;
+    pthread_t *tids, *tids2, *tids_a;
 
     if (argc < 3) //not enough arguments
     {
@@ -518,6 +526,7 @@ int main(int argc, char **argv)
     args2 = malloc(directory_threads * sizeof(struct targs2));
     tids = malloc(file_threads * sizeof(pthread_t));
     tids2 = malloc(directory_threads * sizeof(pthread_t));
+    tids_a = malloc(analysis_threads * sizeof(pthread_t));
     pthread_mutex_init(&lock, NULL);
 
     // start file threads here:
@@ -563,28 +572,50 @@ int main(int argc, char **argv)
         }
     }
 
-    /*while(file_q.count != 0)
-    {
-        char *path;
-        path = dequeue(&file_q, path);
-        if (path == NULL)
-        {
-            return 0;
-        }
-        FindWFD(path);
-    }*/
-
     //join file threads:
     for (int i = 0; i < file_threads; i++)
     {
         pthread_join(tids[i], NULL);
     }
+    if(DEBUG)
+    {
+        printf("file threads joined\n");
+    }
+    free(tids);
+    free(args);
 
     // join directory threads
     for (int i = 0; i < directory_threads; i++)
     {
         pthread_join(tids2[i], NULL);
     }
+    if(DEBUG)
+    {
+        printf("directory threads joined\n");
+    }
+    free(tids2);
+    free(args2);
+
+    destroy(&file_q);
+    destroy_dir(&directory_q);
+
+    // start analysis threads
+    for (int i = 0; i < analysis_threads; i++)
+    {
+        err = pthread_create(&tids_a[i], NULL, computeJSD, NULL);
+        if (err != 0)
+        {
+            perror("Analysis thread creation failed");
+            return EXIT_FAILURE;
+        }
+    }
+
+    //join analysis threads
+    for (int i = 0; i < analysis_threads; i++)
+    {
+        pthread_join(tids_a[i], NULL);
+    }
+    free(tids_a);
 
     if (DEBUG)
     {
@@ -592,7 +623,6 @@ int main(int argc, char **argv)
         printListWFD(wfd_repo);
     }
 
-    computeJSD();
     if (DEBUG)
     {
         printf("File Queue...\n");
@@ -605,7 +635,7 @@ int main(int argc, char **argv)
     {
         for (int i = 0; i < number_of_comparisons; i++)
         {
-            printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s %s\n",
+            printf("Combined Word Count: %d\tJSD: %f\t\tFiles Being Compared: %s\t%s\n",
                    JSD_struct[i].combined_word_count, JSD_struct[i].JSD, JSD_struct[i].path1, JSD_struct[i].path2);
         }
     }
@@ -615,11 +645,8 @@ int main(int argc, char **argv)
     }
 
     pthread_mutex_destroy(&lock);
-    destroy(&file_q);
-    free(tids);
-    free(args);
-    destroy_dir(&directory_q);
-    free(tids2);
-    free(args2);
+    free(JSD_struct);   
+    
+    
     return EXIT_SUCCESS;
 }
