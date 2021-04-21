@@ -100,7 +100,8 @@ void *SearchDir(void *A)
                 strcpy(new_path, path);
                 strcat(new_path, "/");
                 strcat(new_path, fname);
-                enqueue(args->fQ, new_path);
+                if (strcmp(&new_path[strlen(new_path) - strlen (file_name_suffix)], file_name_suffix) == 0) 
+                    enqueue(args->fQ, new_path);
             }
 
             else if (de->d_type == DT_DIR)
@@ -203,7 +204,7 @@ void *FindWFD(void *A)
                     {
                         list = add(list, word, 0.0);
                     }
-                }free(word);
+                }//free(word);
             } //sb_destroy(&str);
         } close(input_fd);
 
@@ -480,10 +481,12 @@ int SetOptions(char *argv) // sets number of threads/ file name suffix
     }
     else if (strncmp(argv, "-s", sizeof(char) * 2) == 0)
     {
-        // set new file name suffix
-        int len = strlen(argv) - 2;
-        strncpy(file_name_suffix, argv + 2, len);
-    }
+		// set new file name suffix
+        	//int len = strlen(argv) - 2;
+        	//strncpy(file_name_suffix, argv + 2, len);
+        	strcpy(file_name_suffix, argv + 2);
+        	if (DEBUG) printf("New Suffix: %s\n", file_name_suffix);
+	}
     else
     {
         fprintf(stderr, "Invalid optional argument: %s\n", argv);

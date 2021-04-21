@@ -102,6 +102,7 @@ void destroyList(node_t* root){
                 if (root->next != NULL){
                         destroyList(root->next);
                 }
+                free(root->word);
                 free(root);
         }
 }
