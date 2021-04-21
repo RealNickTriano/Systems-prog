@@ -158,4 +158,5 @@ int printQueue_dir(dir_queue_t *Q)
         {
                 printf("%s\n", Q->data[i]);
         }
+return 0;
 }

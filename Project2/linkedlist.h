@@ -70,6 +70,7 @@ else{
 	if(DEBUG)
 	printf("DANGER\n");
     return root;}
+
 }
 
 node_t* find(node_t *root, char* w){
@@ -84,6 +85,7 @@ node_t* find(node_t *root, char* w){
             return NULL;
         find(root->next, w);
     }
+
 }
 
 void printList(node_t *root)
@@ -136,6 +138,7 @@ void destroyListWFD(wfd_t *root)
 {
     
         if (root->next != NULL){
+            destroyList(root->list);
             destroyListWFD(root->next);
         }
         free(root);
