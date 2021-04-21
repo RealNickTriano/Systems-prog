@@ -94,14 +94,21 @@ void *SearchDir(void *A)
 
             else if (de->d_type == DT_REG)
             {
-                char *fname = de->d_name;
-                size_t new_path_size = sizeof(path) + sizeof(fname) + 2;
-                char new_path[new_path_size];
-                strcpy(new_path, path);
-                strcat(new_path, "/");
-                strcat(new_path, fname);
-                if (strcmp(&new_path[strlen(new_path) - strlen (file_name_suffix)], file_name_suffix) == 0) 
-                    enqueue(args->fQ, new_path);
+                if (de->d_name[0] == '.')
+                {
+
+                }
+                else
+                {
+                    char *fname = de->d_name;
+                    size_t new_path_size = sizeof(path) + sizeof(fname) + 2;
+                    char new_path[new_path_size];
+                    strcpy(new_path, path);
+                    strcat(new_path, "/");
+                    strcat(new_path, fname);
+                    if (strcmp(&new_path[strlen(new_path) - strlen (file_name_suffix)], file_name_suffix) == 0) 
+                        enqueue(args->fQ, new_path);
+                }
             }
 
             else if (de->d_type == DT_DIR)
