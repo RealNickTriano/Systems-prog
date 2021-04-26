@@ -1,0 +1,64 @@
+Server Program:
+    - takes one argument, an int identifying which port it will listen on.
+        -> between 5000 and 65536
+        -> netstat shows all ports in use by a Program
+    - opens and binds a listening socket on the specified port and waits for incoming connection requests
+    - for each connection it creates a thread to handle communication with that client
+        -> thread terminatges once connection is closed
+    - Server also maintains the key-value data in a data structure shared by all threads
+        -> choose any data structure (should support adding and removing keys/ changing the value associated with a key)
+        -> Ex: linked list alphabetically order, binary tree, hash table
+        -> synchronize access to the structure to avoid non-deterministic behavior
+
+Communication Protocol:
+    - clients initiate and terminate connections to the server
+    - client will send zero or more requests to server once connection is opens
+    - server will do something and respond, client can then send another response or close
+
+    Messages:
+        GET: (key) Requests the current value associated with key. If key is set, the server returns its value.
+            Otherwise it returns key-not-found error.
+
+        SET: (key, value) Associates value with key.
+
+        DEL: (key) Deletes key from storage. If key is set, it returns the value that was associated with it
+            and unsets the key. Otherwise, it returns key-not-found error.
+
+    Message Format:
+        - each request is terminated by a newline character \netstat
+        - each Message begins with a code identifying the message type, followed by a decimal integer spoecifying the length in bytes
+            -> length includes newline
+
+    Successful Responses:
+        - each request has a corresponding response message indicating Success
+        Response codes:
+            OKG - for GET
+            OKS - for SET
+            OKD - for DEL
+        - OKG, OKD codes will be followed by a payload length field and the payload itself (value associated with the key requested or deleted)
+
+    Unsuccessful Response:
+            KNF\n if GET or DEL request asks for key that is not set
+    
+    Error Responses:
+        - Error messages from the server begin with the code ERR followed by a newline, a 3 character error code and the final newline
+            ERROR CODES:
+                BAD - indicates malformed message
+                LEN - indicates message length was wrong
+                SRV - indicates an internal error in the server
+        - We consider messages containing an unknown message code, or one that is inappropriate in
+            context, or fields containing inappropriate data (such as non-digit characters in the length field) to
+            be malformed. Messages that contain the wrong number of newlines will generally have the wrong
+            length.
+            The server will close the connection after sending an error response.
+
+    General Features:
+         - last byte of the message will always be newline
+         - number of newlines that will occur in the message is determined by message code
+            -> allows detection of incorrect lengths
+            -> once length is parsed the final newline must come exactly that many chars later
+        - if newline comes too early the message is too short
+        - if newline does not come within the specified number of bytes, message is too long
+            -> server sends ERR with LEN and closes connection as soon as the error is discovered
+        
+            
