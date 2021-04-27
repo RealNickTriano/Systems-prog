@@ -15,7 +15,8 @@
 int running = 1;
 
 // the argument we will pass to the connection-handler threads
-struct connection {
+struct connection
+{
     struct sockaddr_storage addr;
     socklen_t addr_len;
     int fd;
@@ -26,20 +27,20 @@ void *echo(void *arg);
 
 int main(int argc, char **argv)
 {
-	if (argc != 2) {
-		printf("Usage: %s [port]\n", argv[0]);
-		exit(EXIT_FAILURE);
-	}
+    if (argc != 2)
+    {
+        printf("Usage: %s [port]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-    (void) server(argv[1]);
+    (void)server(argv[1]);
     return EXIT_SUCCESS;
 }
 
 void handler(int signal)
 {
-	running = 0;
+    running = 0;
 }
-
 
 int server(char *port)
 {
@@ -53,34 +54,38 @@ int server(char *port)
     hint.ai_family = AF_UNSPEC;
     hint.ai_socktype = SOCK_STREAM;
     hint.ai_flags = AI_PASSIVE;
-    	// setting AI_PASSIVE means that we want to create a listening socket
+    // setting AI_PASSIVE means that we want to create a listening socket
 
     // get socket and address info for listening port
     // - for a listening socket, give NULL as the host name (because the socket is on
     //   the local host)
     error = getaddrinfo(NULL, port, &hint, &info_list);
-    if (error != 0) {
+    if (error != 0)
+    {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
         return -1;
     }
 
     // attempt to create socket
-    for (info = info_list; info != NULL; info = info->ai_next) {
+    for (info = info_list; info != NULL; info = info->ai_next)
+    {
         sfd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-        
+
         // if we couldn't create the socket, try the next method
-        if (sfd == -1) {
+        if (sfd == -1)
+        {
             continue;
         }
 
         // if we were able to create the socket, try to set it up for
         // incoming connections;
-        // 
+        //
         // note that this requires two steps:
         // - bind associates the socket with the specified port on the local host
         // - listen sets up a queue for incoming connections and allows us to use accept
         if ((bind(sfd, info->ai_addr, info->ai_addrlen) == 0) &&
-            (listen(sfd, BACKLOG) == 0)) {
+            (listen(sfd, BACKLOG) == 0))
+        {
             break;
         }
 
@@ -88,7 +93,8 @@ int server(char *port)
         close(sfd);
     }
 
-    if (info == NULL) {
+    if (info == NULL)
+    {
         // we reached the end of result without successfuly binding a socket
         fprintf(stderr, "Could not bind\n");
         return -1;
@@ -96,78 +102,81 @@ int server(char *port)
 
     freeaddrinfo(info_list);
 
-	struct sigaction act;
-	act.sa_handler = handler;
-	act.sa_flags = 0;
-	sigemptyset(&act.sa_mask);
-	sigaction(SIGINT, &act, NULL);
-	
-	sigset_t mask;
-	
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
+    struct sigaction act;
+    act.sa_handler = handler;
+    act.sa_flags = 0;
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGINT, &act, NULL);
 
+    sigset_t mask;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
 
     // at this point sfd is bound and listening
     printf("Waiting for connection\n");
-	while (running) {
-    	// create argument struct for child thread
-		con = malloc(sizeof(struct connection));
+    while (running)
+    {
+        // create argument struct for child thread
+        con = malloc(sizeof(struct connection));
         con->addr_len = sizeof(struct sockaddr_storage);
-        	// addr_len is a read/write parameter to accept
-        	// we set the initial value, saying how much space is available
-        	// after the call to accept, this field will contain the actual address length
-        
+        // addr_len is a read/write parameter to accept
+        // we set the initial value, saying how much space is available
+        // after the call to accept, this field will contain the actual address length
+
         // wait for an incoming connection
-        con->fd = accept(sfd, (struct sockaddr *) &con->addr, &con->addr_len);
-        	// we provide
-        	// sfd - the listening socket
-        	// &con->addr - a location to write the address of the remote host
-        	// &con->addr_len - a location to write the length of the address
-        	//
-        	// accept will block until a remote host tries to connect
-        	// it returns a new socket that can be used to communicate with the remote
-        	// host, and writes the address of the remote hist into the provided location
-        
+        con->fd = accept(sfd, (struct sockaddr *)&con->addr, &con->addr_len);
+        // we provide
+        // sfd - the listening socket
+        // &con->addr - a location to write the address of the remote host
+        // &con->addr_len - a location to write the length of the address
+        //
+        // accept will block until a remote host tries to connect
+        // it returns a new socket that can be used to communicate with the remote
+        // host, and writes the address of the remote hist into the provided location
+
         // if we got back -1, it means something went wrong
-        if (con->fd == -1) {
+        if (con->fd == -1)
+        {
             perror("accept");
             continue;
         }
-        
+
         // temporarily block SIGINT (child will inherit mask)
         error = pthread_sigmask(SIG_BLOCK, &mask, NULL);
-        if (error != 0) {
-        	fprintf(stderr, "sigmask: %s\n", strerror(error));
-        	abort();
+        if (error != 0)
+        {
+            fprintf(stderr, "sigmask: %s\n", strerror(error));
+            abort();
         }
 
-		// spin off a worker thread to handle the remote connection
+        // spin off a worker thread to handle the remote connection
         error = pthread_create(&tid, NULL, echo, con);
 
-		// if we couldn't spin off the thread, clean up and wait for another connection
-        if (error != 0) {
+        // if we couldn't spin off the thread, clean up and wait for another connection
+        if (error != 0)
+        {
             fprintf(stderr, "Unable to create thread: %d\n", error);
             close(con->fd);
             free(con);
             continue;
         }
 
-		// otherwise, detach the thread and wait for the next connection request
+        // otherwise, detach the thread and wait for the next connection request
         pthread_detach(tid);
 
         // unblock SIGINT
         error = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
-        if (error != 0) {
-        	fprintf(stderr, "sigmask: %s\n", strerror(error));
-        	abort();
+        if (error != 0)
+        {
+            fprintf(stderr, "sigmask: %s\n", strerror(error));
+            abort();
         }
-
     }
 
-	puts("No longer listening.");
-	pthread_detach(pthread_self());
-	pthread_exit(NULL);
+    puts("No longer listening.");
+    pthread_detach(pthread_self());
+    pthread_exit(NULL);
 
     // never reach here
     return 0;
@@ -178,38 +187,118 @@ int server(char *port)
 void *echo(void *arg)
 {
     strbuf_t strbuf;
-    char host[100], port[10], buf[BUFSIZE + 1];
-    struct connection *c = (struct connection *) arg;
-    int error, nread;
+    int count, a,d,e,f = 0;
+    char *message, *command, *key, *value; //*input;
+    char host[100], port[10], buf[2];
+    struct connection *c = (struct connection *)arg;
+    int error, nread, compare;
 
-	// find out the name and port of the remote host
-    error = getnameinfo((struct sockaddr *) &c->addr, c->addr_len, host, 100, port, 10, NI_NUMERICSERV);
-    	// we provide:
-    	// the address and its length
-    	// a buffer to write the host name, and its length
-    	// a buffer to write the port (as a string), and its length
-    	// flags, in this case saying that we want the port as a number, not a service name
-    if (error != 0) {
+    // find out the name and port of the remote host
+    error = getnameinfo((struct sockaddr *)&c->addr, c->addr_len, host, 100, port, 10, NI_NUMERICSERV);
+    // we provide:
+    // the address and its length
+    // a buffer to write the host name, and its length
+    // a buffer to write the port (as a string), and its length
+    // flags, in this case saying that we want the port as a number, not a service name
+    if (error != 0)
+    {
         fprintf(stderr, "getnameinfo: %s", gai_strerror(error));
         close(c->fd);
         return NULL;
     }
 
-    sb_init(&strbuf, 10);
     printf("[%s:%s] connection\n", host, port);
+    sb_init(&strbuf, 10);
 
-    while ((nread = read(c->fd, buf, 1)) > 0) {
-        buf[nread] = '\0';
-        /*sb_append(&strbuf, buf[0]);
-        if (buf[0] == '\n')
-        {
-            // reached the end of a message so lets read the sb buffer
-            printf("%s")
+    while ((nread = read(c->fd, buf, 1)) > 0)
+    {
 
-        }*/
-        
+        //buf[nread] = '\0';
+
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
+        if (buf[0] == '\n') // reached the end of a message so lets read the sb buffer
+        {
+            message = malloc(sizeof(char) * (count + 1) );
+            sb_word(&strbuf, count + 1, message);
+            if (a == 0){ //When no command is set
+                //set command to..
+                if (strcmp(message, "GET") == 0 || strcmp(message, "SET") == 0 || strcmp(message, "DEL") == 0)
+                {
+                    command = malloc(sizeof(char) * (count + 1));
+                    strcpy(command, message);
+                    if ( strcmp(command, "SET") == 0)
+                        e = 1;
+                    printf("Sets command to %s\n", command);
+                }
+                else
+                {
+                    //bad form
+                }
+                count = 0;
+                a = 1;
+            }
+            else if (d > 0) //When number of bytes is given
+            {
+                //Set Key and/or value
+                if (e == 1)
+                {
+                    printf("Count: %d Bytes Remaining: %d\n", count + 1, d);
+                    if (count + 1 <= d){
+                        printf("count + 1 <= d\n");
+                        if (f == 1){
+                            printf("f = 1\n");
+                            value = malloc(sizeof(char) * (count + 1));
+                            strcpy(value, message);
+                            printf("SET value: %s\n", value);
+                            count = 0; a = 0; d = 0; e = 0; f = 0;
+                        }
+                        else{
+                            key = malloc(sizeof(char) * (count + 1));
+                            strcpy(key, message);
+                            printf("SET key: %s\n", key);
+                            d -= (count + 1);
+                            count = 0;
+                            f = 1;
+                        }
+                    }
+                    
+                    // we have key and then value coming
+                }
+
+                else
+                {
+                    // we just have key
+                    if (count + 1 <= d){
+                        key = malloc(sizeof(char) * d);
+                        strcpy(key, message);
+                        printf("GET/DEL key: %s\n", key);
+                        count = 0; a = 0; d = 0; e = 0; f = 0;
+                    }
+                    else{
+                        //ERROR
+                    }
+                }
+            }
+            else 
+            {
+                //Set byte length 
+                d = atoi(message);
+                printf("byte length: %d\n", d);
+                count = 0;
+            }
+            free(message);
+            sb_destroy(&strbuf);
+            sb_init(&strbuf, 10);
+        }
+        else
+        {
+            count++;
+            sb_append(&strbuf, buf[0]);
+        }
+        
+        
     }
+    sb_destroy(&strbuf);
 
     printf("[%s:%s] got EOF\n", host, port);
 
