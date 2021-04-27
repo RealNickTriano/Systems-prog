@@ -188,7 +188,7 @@ void *echo(void *arg)
 {
     strbuf_t strbuf;
     int count, a,d,e,f = 0;
-    char *message, *command, *key, *value; //*input;
+    char *message, *command, *key, *value;
     char host[100], port[10], buf[2];
     struct connection *c = (struct connection *)arg;
     int error, nread, compare;
@@ -227,15 +227,15 @@ void *echo(void *arg)
                     command = malloc(sizeof(char) * (count + 1));
                     strcpy(command, message);
                     if ( strcmp(command, "SET") == 0)
-                        e = 1;
+                        e = 1; // boolean if command is "SET"
                     printf("Sets command to %s\n", command);
                 }
                 else
                 {
                     //bad form
                 }
-                count = 0;
-                a = 1;
+                count = 0; // number of characters since last \n
+                a = 1; // boolean if a command has been set
             }
             else if (d > 0) //When number of bytes is given
             {
@@ -258,7 +258,7 @@ void *echo(void *arg)
                             printf("SET key: %s\n", key);
                             d -= (count + 1);
                             count = 0;
-                            f = 1;
+                            f = 1; // boolean if key has been set yet
                         }
                     }
                     
