@@ -25,7 +25,7 @@ Communication Protocol:
             and unsets the key. Otherwise, it returns key-not-found error.
 
     Message Format:
-        - each request is terminated by a newline character \netstat
+        - each request is terminated by a newline character \n
         - each Message begins with a code identifying the message type, followed by a decimal integer spoecifying the length in bytes
             -> length includes newline
 
@@ -61,4 +61,7 @@ Communication Protocol:
         - if newline does not come within the specified number of bytes, message is too long
             -> server sends ERR with LEN and closes connection as soon as the error is discovered
         
-            
+    NOTES:
+        - server should not read past the 'y' in this example
+            GET\n3\nday\n
+            -> send ERR\nLEN\n and close connection

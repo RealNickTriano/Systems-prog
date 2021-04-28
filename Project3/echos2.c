@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include "strbuf.h"
+#include "linkedlist.h"
 
 #define BACKLOG 5
 
@@ -22,6 +23,7 @@ struct connection
     int fd;
 };
 
+node_t *key_list;
 int server(char *port);
 void *echo(void *arg);
 
@@ -226,7 +228,7 @@ void *echo(void *arg)
                 {
                     command = malloc(sizeof(char) * (count + 1));
                     strcpy(command, message);
-                    if ( strcmp(command, "SET") == 0)
+                    if (strcmp(command, "SET") == 0)
                         e = 1; // boolean if command is "SET"
                     printf("Sets command to %s\n", command);
                 }
@@ -239,6 +241,7 @@ void *echo(void *arg)
             }
             else if (d > 0) //When number of bytes is given
             {
+                // we have key and then value coming
                 //Set Key and/or value
                 if (e == 1)
                 {
@@ -250,6 +253,7 @@ void *echo(void *arg)
                             value = malloc(sizeof(char) * (count + 1));
                             strcpy(value, message);
                             printf("SET value: %s\n", value);
+                            key_list = add(key_list, key, value);
                             count = 0; a = 0; d = 0; e = 0; f = 0;
                         }
                         else{
@@ -262,7 +266,7 @@ void *echo(void *arg)
                         }
                     }
                     
-                    // we have key and then value coming
+                    
                 }
 
                 else
@@ -277,6 +281,35 @@ void *echo(void *arg)
                     else{
                         //ERROR
                     }
+                    if (strcmp(command,"GET") == 0)
+                    {
+                        value = find(key_list, key);
+                        if (value == NULL)
+                        {
+                            //key does not exist
+                        }
+                        else
+                        {
+                            printf("Here is your value: %s\t For key: %s\n", value, key);
+                        }
+                    }
+                    if(strcmp(command,"DEL") == 0)
+                    {printf("Here\n");
+                        key_list = del(key_list, key);
+			printf("Here2\n");
+                        if (key_list == NULL)
+                        {
+                            //key does not exist
+                            printf("key DNE\n");
+                        }
+                        else
+                        {
+                            printf("Value deleted: %s\t For key: %s\n", value, key);
+                        }
+                    }
+                    
+                    
+                    
                 }
             }
             else 
@@ -306,3 +339,13 @@ void *echo(void *arg)
     free(c);
     return NULL;
 }
+
+/*while (written < buflen)
+{
+    bytes = write(fd, buf + written, buflen - written);
+    if (bytes < 1)
+    {
+        //error
+    }
+    written += bytes;
+}*/
