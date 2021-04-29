@@ -221,9 +221,10 @@ void *echo(void *arg)
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
         if (buf[0] == '\n') // reached the end of a message so lets read the sb buffer
         {
-            message = malloc(sizeof(char) * (count + 1) );
+            message = malloc(sizeof(char) * (count + 1));
             sb_word(&strbuf, count + 1, message);
-            if (com == 0){ //When no command is set
+            if (com == 0)
+            { //When no command is set
                 //set command to..
                 if (strcmp(message, "GET") == 0 || strcmp(message, "SET") == 0 || strcmp(message, "DEL") == 0)
                 {
@@ -232,7 +233,7 @@ void *echo(void *arg)
                     if (strcmp(command, "SET") == 0)
                         kv = 1; // boolean if command is "SET"
                     printf("Sets command to %s\n", command);
-		            com = 1; // boolean if a command has been set
+                    com = 1; // boolean if a command has been set
                 }
                 else
                 {
@@ -248,44 +249,64 @@ void *echo(void *arg)
                 if (kv == 1)
                 {
                     printf("Count: %d Bytes Remaining: %d\n", count + 1, bytes);
-                    if (count + 1 <= bytes){
+                    if (count + 1 <= bytes)
+                    {
                         printf("count + 1 <= bytes\n");
-                        if (kf == 1){
+                        if (kf == 1)
+                        {
                             printf("f = 1\n");
                             value = malloc(sizeof(char) * (count + 1));
                             strcpy(value, message);
                             printf("SET key: %s value: %s\n", key, value);
                             key_list = add(key_list, key, value);
                             write(c->fd, "OKS\n", 4);
-                            count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
+                            count = 0;
+                            com = 0;
+                            bytes = 0;
+                            kv = 0;
+                            kf = 0;
                         }
-                        else{
+                        else
+                        {
                             key = malloc(sizeof(char) * (count + 1));
                             strcpy(key, message);
                             printf("SET key: %s\n", key);
                             bytes -= (count + 1);
+                            if (bytes == 0)
+                            {
+                                write(c->fd, "ERR\nLEN\n", 8);
+                                break;
+                            }
                             count = 0;
                             kf = 1; // boolean if key has been set yet
                         }
                     }
-                    else{
+                    else
+                    {
                         write(c->fd, "ERR\nLEN\n", 8);
+                        break;
                     }
                 }
 
                 else
                 {
                     // we just have key
-                    if (count + 1 <= bytes){
+                    if (count + 1 <= bytes)
+                    {
                         key = malloc(sizeof(char) * bytes);
                         strcpy(key, message);
                         printf("GET/DEL key: %s\n", key);
-                        count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
+                        count = 0;
+                        com = 0;
+                        bytes = 0;
+                        kv = 0;
+                        kf = 0;
                     }
-                    else{
+                    else
+                    {
                         //ERROR
                     }
-                    if (strcmp(command,"GET") == 0)
+                    if (strcmp(command, "GET") == 0)
                     {
                         value = find(key_list, key);
                         if (value == NULL)
@@ -297,36 +318,38 @@ void *echo(void *arg)
                             printf("Here is your value: %s\t For key: %s\n", value, key);
                         }
                     }
-                    if(strcmp(command,"DEL") == 0)
-                    {printf("Here\n");
-                        char* exists = find(key_list, key);
-                        if (exists = NULL){
+                    if (strcmp(command, "DEL") == 0)
+                    {
+                        char *exists = find(key_list, key);
+                        if (exists == NULL)
+                        {
                             write(c->fd, "KNF\n", 4);
                         }
-                        else{
+                        else
+                        {
                             key_list = del(key_list, key);
                             write(c->fd, "OKD\n", 4);
-                            int value_size= strlen(exists) + 1;
-                            /*
-                            FILE *fout = fdopen(c->fd, "w");
-                            fprintf(c->fd, "%d\n", value_size);
-                            fflush(c->fd);
-                            fclose(fd);
-                            */
-                            dprintf(fd, "%d\n", value_size);
-                            write(c->fd, exists, value_size);
+                            int value_size = strlen(exists) + 1;
+                            int length = snprintf(NULL, 0, "%d", value_size);
+                            char *str = malloc(length + 1);
+                            snprintf(str, length + 1, "%d", value_size);
+                            write(c->fd, str, length + 1);
+                            write(c->fd, "\n", 1);
+                            //write(c->fd, value_size, value_size + 1);
+                            int err = write(c->fd, exists, (value_size + 1));
+                            if (err == 0)
+                                perror("error writing exists: ");
+
                             write(c->fd, "\n", 1);
                             printf("Value deleted: %s\t For key: %s\n", value, key);
+                            free(str);
                         }
                     }
-                    
-                    
-                    
                 }
             }
-            else 
+            else
             {
-                //Set byte length 
+                //Set byte length
                 bytes = atoi(message);
                 printf("byte length: %d\n", bytes);
                 count = 0;
@@ -340,8 +363,6 @@ void *echo(void *arg)
             count++;
             sb_append(&strbuf, buf[0]);
         }
-        
-        
     }
     sb_destroy(&strbuf);
 
