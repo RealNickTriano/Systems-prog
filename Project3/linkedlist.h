@@ -52,6 +52,7 @@ node_t* add(node_t *root, char *key, char *value)
     }
 
     else if(strcmp(key, root->key) == 0){
+        strcpy(root->value, value);
         return root;
     }
 
@@ -61,11 +62,11 @@ node_t* add(node_t *root, char *key, char *value)
     else if(strcmp(key, root->key) < 0){
             return insert(root, key, value);
     }
-else{
-	if(DEBUG)
-	printf("DANGER\n");
-    return root;}
-
+    else{
+	    if(DEBUG)
+	    printf("DANGER\n");
+        return root;
+    }
 }
 
 char* find(node_t *root, char *key){
