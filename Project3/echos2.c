@@ -217,6 +217,15 @@ void *echo(void *arg)
     {
 
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
+
+        if(count > bytes && com == 1 && bytes > 0)
+        {
+            //error
+            write(c->fd, "ERR\nLEN2\n", 8);
+            count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
+            break;
+        }
+
         if (buf[0] == '\n') // reached the end of a message so lets read the sb buffer
         {
             message = malloc(sizeof(char) * (count + 1));
