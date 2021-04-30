@@ -177,6 +177,7 @@ int server(char *port)
     }
 
     puts("No longer listening.");
+    destroyList(key_list);
     pthread_detach(pthread_self());
     pthread_exit(NULL);
 
@@ -213,15 +214,19 @@ void *echo(void *arg)
     printf("[%s:%s] connection\n", host, port);
     sb_init(&strbuf, 10);
 
-    while ((nread = read(c->fd, buf, 1)) > 0)
+    while ((nread = read(c->fd, buf, 1)) > 0 )
     {
-
+        if(running == 0)
+        {
+            write(c->fd, "ERR\nSRV\n", 8);
+            pthread_exit(NULL);
+        }
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
 
         if(count > bytes && com == 1 && bytes > 0)
         {
             //error
-            write(c->fd, "ERR\nLEN2\n", 8);
+            write(c->fd, "ERR\nLEN\n", 8);
             count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
             break;
         }
@@ -245,6 +250,7 @@ void *echo(void *arg)
                 else
                 {
                     write(c->fd, "ERR\nBAD\n", 8);
+                    count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                     break;
                 }
                 count = 0; // number of characters since last \n
@@ -265,6 +271,7 @@ void *echo(void *arg)
                             if (count + 1 != bytes)
                             {
                                 write(c->fd, "ERR\nLEN\n", 8);
+                                count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                                 break;
                             }
             
@@ -274,6 +281,7 @@ void *echo(void *arg)
                             printf("SET key: %s value: %s\n", key, value);
                             key_list = add(key_list, key, value);
                             write(c->fd, "OKS\n", 4);
+                            printList(key_list);
                             count = 0;
                             com = 0;
                             bytes = 0;
@@ -289,6 +297,7 @@ void *echo(void *arg)
                             if (bytes <= 0)
                             {
                                 write(c->fd, "ERR\nLEN\n", 8);
+                                count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                                 break;
                             }
                             count = 0;
@@ -298,6 +307,7 @@ void *echo(void *arg)
                     else
                     {
                         write(c->fd, "ERR\nLEN\n", 8);
+                        count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                         break;
                     }
                 }
@@ -319,10 +329,13 @@ void *echo(void *arg)
                     else
                     {
                         write(c->fd, "ERR\nLEN\n", 8);
+                        count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                         break;
                     }
                     if (strcmp(command, "GET") == 0)
                     {
+                        printf("%s\n", key);
+                        printList(key_list);
                         value = find(key_list, key);
                         if (value == NULL)
                         {
@@ -342,12 +355,13 @@ void *echo(void *arg)
                             int err = write(c->fd, value, (value_size + 1));
                             if (err == 0)
                                 perror("error writing exists: ");
-                            
+                            write(c->fd, "\n", 1);
                             free(str);
                         }
                     }
                     if (strcmp(command, "DEL") == 0)
                     {
+                        printf("DEL: %s\n", key);
                         char *exists = find(key_list, key);
                         if (exists == NULL)
                         {
@@ -369,7 +383,7 @@ void *echo(void *arg)
                                 perror("error writing exists: ");
 
                             write(c->fd, "\n", 1);
-                            
+                            printList(key_list);
                             free(str);
                         }
                     }
@@ -382,6 +396,7 @@ void *echo(void *arg)
                 if(bytes == 0)
                 {
                     write(c->fd, "ERR\nBAD\n", 8);
+                    count = 0; com = 0; bytes = 0; kv = 0; kf = 0;
                     break;
                 }
                 printf("byte length: %d\n", bytes);

@@ -74,7 +74,7 @@ char* find(node_t *root, char *key){
         return NULL;
     }
 
-    if(strcmp(key, root->key) == 0)
+    else if(strcmp(key, root->key) == 0)
         return root->value;
     else{
         if (root->next == NULL)
@@ -88,7 +88,7 @@ node_t* del(node_t *root, char *key){
     node_t *temp = root;
     node_t *pre = NULL;
 
-    if (temp != NULL && temp->key == key)
+    if (temp != NULL && strcmp(temp->key,key) == 0)
     {
         root = temp->next;
         printf("Removed key:value -> %s : %s\n", temp->key, temp->value);
@@ -97,7 +97,7 @@ node_t* del(node_t *root, char *key){
     }
     else
     {
-        while(temp != NULL && temp->key != key)
+        while(temp != NULL && strcmp(temp->key,key) != 0)
         {
             pre = temp;
             temp = temp->next;
@@ -109,7 +109,7 @@ node_t* del(node_t *root, char *key){
         printf("Removed key:value -> %s : %s\n", temp->key, temp->value);
         pre->next = temp->next;
         free(temp);
-        return root;
+        return pre;
 
     }
     
