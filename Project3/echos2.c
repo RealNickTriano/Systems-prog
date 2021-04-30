@@ -216,8 +216,6 @@ void *echo(void *arg)
     while ((nread = read(c->fd, buf, 1)) > 0)
     {
 
-        //buf[nread] = '\0';
-
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
         if (buf[0] == '\n') // reached the end of a message so lets read the sb buffer
         {
@@ -238,6 +236,7 @@ void *echo(void *arg)
                 else
                 {
                     write(c->fd, "ERR\nBAD\n", 8);
+                    break;
                 }
                 count = 0; // number of characters since last \n
             }
@@ -254,6 +253,12 @@ void *echo(void *arg)
                         printf("count + 1 <= bytes\n");
                         if (kf == 1)
                         {
+                            if (count + 1 != bytes)
+                            {
+                                write(c->fd, "ERR\nLEN\n", 8);
+                                break;
+                            }
+            
                             printf("f = 1\n");
                             value = malloc(sizeof(char) * (count + 1));
                             strcpy(value, message);
@@ -272,7 +277,7 @@ void *echo(void *arg)
                             strcpy(key, message);
                             printf("SET key: %s\n", key);
                             bytes -= (count + 1);
-                            if (bytes == 0)
+                            if (bytes <= 0)
                             {
                                 write(c->fd, "ERR\nLEN\n", 8);
                                 break;
@@ -291,7 +296,7 @@ void *echo(void *arg)
                 else
                 {
                     // we just have key
-                    if (count + 1 <= bytes)
+                    if (count + 1 == bytes)
                     {
                         key = malloc(sizeof(char) * bytes);
                         strcpy(key, message);
@@ -304,7 +309,8 @@ void *echo(void *arg)
                     }
                     else
                     {
-                        //ERROR
+                        write(c->fd, "ERR\nLEN\n", 8);
+                        break;
                     }
                     if (strcmp(command, "GET") == 0)
                     {
@@ -312,10 +318,23 @@ void *echo(void *arg)
                         if (value == NULL)
                         {
                             //key does not exist
+                            write(c->fd, "KNF\n", 4);
                         }
                         else
                         {
-                            printf("Here is your value: %s\t For key: %s\n", value, key);
+                            write(c->fd, "OKG\n", 4);
+                            int value_size = strlen(value) + 1;
+                            int length = snprintf(NULL, 0, "%d", value_size);
+                            char *str = malloc(length + 1);
+                            snprintf(str, length + 1, "%d", value_size);
+                            write(c->fd, str, length + 1);
+                            write(c->fd, "\n", 1);
+                            //write(c->fd, value_size, value_size + 1);
+                            int err = write(c->fd, value, (value_size + 1));
+                            if (err == 0)
+                                perror("error writing exists: ");
+                            
+                            free(str);
                         }
                     }
                     if (strcmp(command, "DEL") == 0)
@@ -341,7 +360,7 @@ void *echo(void *arg)
                                 perror("error writing exists: ");
 
                             write(c->fd, "\n", 1);
-                            printf("Value deleted: %s\t For key: %s\n", value, key);
+                            
                             free(str);
                         }
                     }
@@ -351,6 +370,11 @@ void *echo(void *arg)
             {
                 //Set byte length
                 bytes = atoi(message);
+                if(bytes == 0)
+                {
+                    write(c->fd, "ERR\nBAD\n", 8);
+                    break;
+                }
                 printf("byte length: %d\n", bytes);
                 count = 0;
             }
