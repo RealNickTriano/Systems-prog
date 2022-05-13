@@ -218,7 +218,7 @@ void *echo(void *arg)
     {
         if(running == 0)
         {
-            write(c->fd, "ERR\nSRV\n", 8);
+            write(c->fd, "SRV\n", 4);
             pthread_exit(NULL);
         }
         printf("[%s:%s] read %d bytes |%s|\n", host, port, nread, buf);
@@ -420,13 +420,3 @@ void *echo(void *arg)
     free(c);
     return NULL;
 }
-
-/*while (written < buflen)
-{
-    bytes = write(fd, buf + written, buflen - written);
-    if (bytes < 1)
-    {
-        //error
-    }
-    written += bytes;
-}*/
